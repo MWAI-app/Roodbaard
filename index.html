@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Renze Roodbaard — De Kroniek</title>
+<style>
+:root{
+  /* Palet: een leren tafelblad met perkament erop. Geen cremekleurige pagina. */
+  --leer:#221812;
+  --leer-licht:#3b2a1c;
+  --leer-naad:#6b4f31;
+  --perkament:#e6d8b4;
+  --perkament-diep:#d6c295;
+  --perkament-schaduw:#a98f66;
+  --inkt:#241a10;
+  --inkt-bleek:#63513a;
+  --inkt-tweede:#3d2f4a;      /* tweede schrijvershand, paarsig gal */
+  --zegel:#7d1f1a;
+  --verguld:#b28a3c;
+
+  --serif:'Iowan Old Style','Palatino Linotype',Palatino,'Book Antiqua',Georgia,serif;
+  --kapitaal:'Hoefler Text',Baskerville,'Times New Roman',serif;
+  --hand:'Segoe Script','Bradley Hand','Brush Script MT','Comic Sans MS',cursive;
+
+  --blad:34rem;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--leer);
+  background-image:
+    radial-gradient(120% 80% at 50% -10%, #3a291b 0%, transparent 60%),
+    repeating-linear-gradient(96deg, rgba(0,0,0,.16) 0 2px, transparent 2px 7px),
+    repeating-linear-gradient(4deg, rgba(255,255,255,.03) 0 1px, transparent 1px 5px);
+  color:var(--perkament);
+  font-family:var(--serif);
+  font-size:17px;
+  line-height:1.62;
+  min-height:100vh;
+  padding:1rem .75rem 6.5rem;
+  -webkit-text-size-adjust:100%;
+}
+
+/* ---------- Het vel perkament: een fysiek object op de tafel ---------- */
+.blad{
+  position:relative;
+  max-width:var(--blad);
+  margin:0 auto 1rem;
+  background:var(--perkament);
+  background-image:
+    radial-gradient(80% 60% at 15% 10%, rgba(255,255,255,.5), transparent 70%),
+    radial-gradient(70% 50% at 90% 95%, rgba(120,90,45,.22), transparent 70%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='k'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3'/><feColorMatrix type='saturate' values='0'/></filter><rect width='180' height='180' filter='url(%23k)' opacity='.16'/></svg>");
+  color:var(--inkt);
+  padding:1.4rem 1.35rem 1.6rem;
+  box-shadow:0 14px 28px rgba(0,0,0,.55), 0 2px 0 rgba(255,255,255,.15) inset;
+  clip-path:polygon(0.4% 0.6%, 99.3% 0%, 100% 99.2%, 0.8% 100%);
+  animation:leggen .45s ease-out both;
+}
+.blad--dun{padding:1rem 1.1rem 1.15rem}
+@keyframes leggen{from{opacity:0;transform:translateY(10px) rotate(-.25deg)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.blad{animation:none}}
+
+.kop{
+  font-family:var(--kapitaal);
+  font-size:.78rem;
+  letter-spacing:.24em;
+  text-transform:uppercase;
+  color:var(--inkt-bleek);
+  margin:0 0 .15rem;
+}
+h1,h2{font-family:var(--serif);font-weight:600;line-height:1.15;margin:.1rem 0 .9rem}
+h1{font-size:1.6rem}
+h2{font-size:1.24rem}
+p{margin:0 0 .85rem}
+.blad p:first-of-type::first-letter{
+  float:left;font-size:3.1rem;line-height:.82;padding:.12rem .34rem 0 0;
+  color:var(--zegel);font-family:var(--serif);
+}
+.regel{border:0;border-top:1px solid var(--perkament-schaduw);margin:1.1rem 0 .9rem}
+
+/* ---------- Beeldplaat: foto als die er is, anders een inkt-ets ---------- */
+.plaat{
+  position:relative;margin:0 0 1.1rem;aspect-ratio:3/2;overflow:hidden;
+  background:var(--perkament-diep);
+  border:1px solid var(--perkament-schaduw);
+  box-shadow:0 1px 6px rgba(0,0,0,.18) inset;
+}
+.plaat img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:2}
+.plaat .ets{position:absolute;inset:0;display:grid;place-items:center;padding:6%}
+.plaat .ets svg{width:100%;height:100%}
+.plaat--klein{aspect-ratio:1/1;margin:0}
+
+/* ---------- Keuzes ---------- */
+.keuzes{display:grid;gap:.55rem;margin-top:.4rem}
+button{font:inherit;cursor:pointer}
+.keuze{
+  display:block;width:100%;text-align:left;
+  background:transparent;color:var(--inkt);
+  border:1px solid var(--perkament-schaduw);
+  border-left:4px solid var(--zegel);
+  padding:.7rem .85rem;
+  transition:background .15s,transform .15s;
+}
+.keuze:hover,.keuze:focus-visible{background:rgba(125,31,26,.09)}
+.keuze:active{transform:translateY(1px)}
+.keuze small{display:block;color:var(--inkt-bleek);font-size:.82rem;line-height:1.35}
+.knop{
+  background:var(--zegel);color:#f2e6c8;border:1px solid #521310;
+  padding:.6rem 1.05rem;font-family:var(--kapitaal);
+  letter-spacing:.14em;text-transform:uppercase;font-size:.76rem;
+}
+.knop--stil{background:transparent;color:var(--inkt);border-color:var(--perkament-schaduw)}
+:focus-visible{outline:2px solid var(--verguld);outline-offset:2px}
+
+/* ---------- Persoonskaart ---------- */
+.hand{font-family:var(--hand);font-size:1.02rem;line-height:1.5}
+.inschrijving{margin:0 0 .55rem;padding-left:.2rem}
+.inschrijving--tweede{color:var(--inkt-tweede);transform:rotate(-.5deg)}
+.inschrijving--derde{color:#4a3a22;transform:rotate(.35deg)}
+.doorgestreept{position:relative;opacity:.62}
+.doorgestreept::after{
+  content:"";position:absolute;left:-2%;right:-2%;top:52%;height:2px;
+  background:var(--inkt);transform:rotate(-.8deg);border-radius:2px;
+}
+.waarden{display:grid;grid-template-columns:repeat(2,1fr);gap:.45rem .9rem;margin:.4rem 0 .2rem}
+.waarde{display:flex;justify-content:space-between;gap:.5rem;border-bottom:1px dotted var(--perkament-schaduw);padding-bottom:.15rem}
+.waarde b{font-weight:600}
+.label{font-family:var(--kapitaal);font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--inkt-bleek)}
+
+/* Het zegel — het signatuurmoment van de app */
+.zegel{width:5.4rem;height:5.4rem;margin:.6rem auto 0;display:block}
+.zegel--druk{animation:drukken .9s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes drukken{0%{transform:scale(2.4) rotate(-14deg);opacity:0}55%{transform:scale(.94) rotate(2deg);opacity:1}100%{transform:none;opacity:1}}
+@media (prefers-reduced-motion:reduce){.zegel--druk{animation:none}}
+
+/* ---------- Uitrusting ---------- */
+.lagen{display:grid;gap:.6rem}
+.laag{display:grid;grid-template-columns:3.6rem 1fr;gap:.75rem;align-items:center;border-bottom:1px solid var(--perkament-schaduw);padding-bottom:.6rem}
+.laag .naam{font-weight:600}
+.laag .cijfers{font-size:.82rem;color:var(--inkt-bleek)}
+.kies{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.35rem}
+.kies button{border:1px solid var(--perkament-schaduw);background:transparent;color:var(--inkt);padding:.28rem .55rem;font-size:.82rem}
+.kies button[aria-pressed="true"]{background:var(--inkt);color:var(--perkament)}
+
+/* ---------- Duel ---------- */
+.tegen{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-bottom:.8rem;text-align:center}
+.balk{height:.5rem;background:var(--perkament-diep);border:1px solid var(--perkament-schaduw);margin-top:.25rem}
+.balk i{display:block;height:100%;background:var(--zegel);transition:width .3s}
+.beat{border-left:3px solid var(--perkament-schaduw);padding-left:.7rem;margin:0 0 .5rem;font-size:.93rem}
+.raad{font-family:var(--hand);color:var(--inkt-tweede)}
+
+/* ---------- Kaart ---------- */
+.kaart{width:100%;height:auto;display:block}
+.kaart .pad{stroke:var(--inkt);stroke-width:1.6;fill:none;stroke-dasharray:400;stroke-dashoffset:0;animation:trekken 1.6s ease-out both}
+@keyframes trekken{from{stroke-dashoffset:400}to{stroke-dashoffset:0}}
+@media (prefers-reduced-motion:reduce){.kaart .pad{animation:none}}
+.kaart text{font-family:var(--kapitaal);font-size:9px;fill:var(--inkt);letter-spacing:.08em}
+.kaart .mist{fill:var(--perkament-diep);opacity:.94}
+
+/* ---------- Onderriem ---------- */
+.riem{
+  position:fixed;left:0;right:0;bottom:0;z-index:9;
+  display:flex;justify-content:center;gap:.2rem;
+  background:linear-gradient(#4a341f,#2c1e13);
+  border-top:2px solid var(--leer-naad);
+  box-shadow:0 -6px 16px rgba(0,0,0,.5);
+  padding:.45rem .4rem calc(.45rem + env(safe-area-inset-bottom));
+}
+.riem button{
+  background:transparent;border:0;color:#c9b183;
+  font-family:var(--kapitaal);font-size:.66rem;letter-spacing:.13em;text-transform:uppercase;
+  padding:.5rem .5rem;display:grid;gap:.2rem;justify-items:center;
+  border-bottom:2px solid transparent;
+}
+.riem button[aria-current="true"]{color:#f0dda9;border-bottom-color:var(--verguld)}
+.riem svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.5}
+.fluister{font-family:var(--hand);color:var(--inkt-tweede);margin:.2rem 0 .5rem}
+.melding{max-width:var(--blad);margin:0 auto .8rem;color:#d9c393;font-size:.85rem;text-align:center}
+textarea,input[type=password]{width:100%;font:inherit;background:rgba(255,255,255,.5);border:1px solid var(--perkament-schaduw);color:var(--inkt);padding:.5rem}
+.wacht{font-family:var(--hand);color:var(--inkt-bleek)}
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<nav class="riem" id="riem"></nav>
+
+<script>
+"use strict";
+/* =====================================================================
+   RENZE ROODBAARD — raamwerk, proloog compleet
+   Eén bestand, geen buildstap, draait op GitHub Pages.
+   ===================================================================== */
+
+/* ---------------------------------------------------------------------
+   1. OPSLAG — localStorage met geheugen-fallback (artifact-venster blokkeert opslag)
+   --------------------------------------------------------------------- */
+const OPSLAG = (() => {
+  const sleutel = "renze_roodbaard";
+  let echt = true;
+  try { localStorage.setItem("_t","1"); localStorage.removeItem("_t"); } catch(e){ echt = false; }
+  let geheugen = null;
+  return {
+    duurzaam: echt,
+    lees(){
+      try { return echt ? JSON.parse(localStorage.getItem(sleutel)) : geheugen; }
+      catch(e){ return null; }
+    },
+    schrijf(s){
+      try { echt ? localStorage.setItem(sleutel, JSON.stringify(s)) : (geheugen = JSON.parse(JSON.stringify(s))); }
+      catch(e){ echt = false; geheugen = s; }
+    },
+    wis(){ try{ localStorage.removeItem(sleutel); }catch(e){} geheugen = null; }
+  };
+})();
+
+/* ---------------------------------------------------------------------
+   2. ASSETS — vaste paden; ontbreekt het bestand, dan verschijnt de ets
+   --------------------------------------------------------------------- */
+const ASSETS = {
+  smidse:      "assets/scene/smidse.webp",
+  vier_eiken:  "assets/scene/vier-eiken.webp",
+  duel:        "assets/scene/duel.webp",
+  sterfbed:    "assets/scene/sterfbed.webp",
+  poort:       "assets/scene/beversluis-poort.webp",
+  ridderslag:  "assets/scene/ridderslag.webp",
+  linnen_hemd:      "assets/kleding/linnen-hemd.webp",
+  gelapt_wambuis:   "assets/kleding/gelapt-wambuis.webp",
+  gevechtspak:      "assets/kleding/leren-kolder.webp",
+  malienkolder:     "assets/kleding/malienkolder.webp",
+  harnas_gerlof:    "assets/kleding/harnas.webp",
+  jachtmes:    "assets/wapen/jachtmes.webp",
+  knuppel:     "assets/wapen/knuppel.webp",
+  zwaard:      "assets/wapen/zwaard-van-weel.webp"
+};
+
+/* Inkt-etsen: de terugval, bewust in stijl en niet als foutmelding */
+const ETSEN = {
+  smidse:`<svg viewBox="0 0 120 80"><g stroke="#241a10" fill="none" stroke-width="1.6" stroke-linecap="round">
+    <path d="M20 62h34l-4-14H24z"/><path d="M18 62h40" stroke-width="2.4"/>
+    <path d="M62 30l22-8 6 7-22 9z" fill="#241a10" opacity=".85"/><path d="M64 34l-16 22"/>
+    <path d="M30 40c2-8 8-10 12-6" opacity=".6"/><path d="M36 32c1-6 5-8 8-5" opacity=".45"/>
+    <path d="M8 70h104" stroke-width=".8" opacity=".5"/></g></svg>`,
+  vier_eiken:`<svg viewBox="0 0 120 80"><g stroke="#241a10" fill="none" stroke-width="1.5" stroke-linecap="round">
+    <path d="M22 68V44M22 44c-8-2-10-10-4-13 0-7 10-9 13-3 7-1 9 8 3 11-1 5-7 7-12 5"/>
+    <path d="M50 70V40M50 40c-9-2-11-11-4-14 0-8 11-10 14-3 8-1 10 9 3 12-1 5-8 7-13 5"/>
+    <path d="M78 68V46M78 46c-7-2-9-9-3-12 0-6 9-8 12-2 6-1 8 7 3 10-1 4-7 6-12 4"/>
+    <path d="M102 70V50M102 50c-6-2-7-8-2-10 0-5 8-6 10-1 5 0 6 6 2 8" />
+    <path d="M4 72h112" stroke-width=".8" opacity=".55"/></g></svg>`,
+  duel:`<svg viewBox="0 0 120 80"><g stroke="#241a10" fill="none" stroke-width="2" stroke-linecap="round">
+    <path d="M18 66L84 16"/><path d="M102 66L36 16"/>
+    <path d="M76 10l12 4-4 12" stroke-width="1.4"/><path d="M44 10L32 14l4 12" stroke-width="1.4"/>
+    <path d="M14 70h92" stroke-width=".8" opacity=".5"/></g></svg>`,
+  sterfbed:`<svg viewBox="0 0 120 80"><g stroke="#241a10" fill="none" stroke-width="1.6" stroke-linecap="round">
+    <path d="M40 58c0-14 6-24 20-24s20 10 20 24z"/><path d="M46 46h28" /><path d="M60 34V22"/>
+    <path d="M52 28h16" stroke-width="2.2"/><path d="M10 66h100" stroke-width=".8" opacity=".5"/>
+    <path d="M28 60c-6-6-6-14 0-18" opacity=".5"/></g></svg>`,
+  poort:`<svg viewBox="0 0 120 80"><g stroke="#241a10" fill="none" stroke-width="1.6" stroke-linecap="round">
+    <path d="M28 70V30h64v40"/><path d="M46 70V48c0-8 6-12 14-12s14 4 14 12v22"/>
+    <path d="M28 30l32-16 32 16"/><path d="M36 70V56M84 70V56" opacity=".5"/>
+    <path d="M8 72h104" stroke-width=".8" opacity=".5"/></g></svg>`,
+  ridderslag:`<svg viewBox="0 0 120 80"><g stroke="#241a10" fill="none" stroke-width="1.8" stroke-linecap="round">
+    <path d="M60 70V22"/><path d="M46 30h28"/><path d="M60 22l-5-8h10z" fill="#7d1f1a" stroke="none"/>
+    <path d="M34 54l6-10 6 8 6-12 6 12 6-8 6 10z"/><path d="M14 72h92" stroke-width=".8" opacity=".5"/></g></svg>`,
+  linnen_hemd:`<svg viewBox="0 0 60 60"><g stroke="#241a10" fill="none" stroke-width="1.6"><path d="M22 12l-10 6 4 8 4-2v24h20V24l4 2 4-8-10-6z"/><path d="M22 12c2 4 6 4 8 0" /></g></svg>`,
+  gelapt_wambuis:`<svg viewBox="0 0 60 60"><g stroke="#241a10" fill="none" stroke-width="1.6"><path d="M20 12l-8 8 5 6v22h26V26l5-6-8-8z"/><path d="M30 16v32"/><path d="M34 30h8v8h-8z" stroke-dasharray="2 2"/></g></svg>`,
+  gevechtspak:`<svg viewBox="0 0 60 60"><g stroke="#241a10" fill="none" stroke-width="1.6"><path d="M18 14h24v30a8 8 0 01-8 6h-8a8 8 0 01-8-6z"/><path d="M18 22h24M18 30h24M18 38h24" opacity=".55"/><path d="M30 14v36" opacity=".4"/></g></svg>`,
+  malienkolder:`<svg viewBox="0 0 60 60"><g stroke="#241a10" fill="none" stroke-width="1.3"><path d="M18 14h24v32H18z"/><g opacity=".65"><circle cx="23" cy="20" r="2"/><circle cx="30" cy="20" r="2"/><circle cx="37" cy="20" r="2"/><circle cx="23" cy="27" r="2"/><circle cx="30" cy="27" r="2"/><circle cx="37" cy="27" r="2"/><circle cx="23" cy="34" r="2"/><circle cx="30" cy="34" r="2"/><circle cx="37" cy="34" r="2"/><circle cx="26" cy="41" r="2"/><circle cx="34" cy="41" r="2"/></g></g></svg>`,
+  harnas_gerlof:`<svg viewBox="0 0 60 60"><g stroke="#241a10" fill="none" stroke-width="1.7"><path d="M22 12h16l6 8-4 6 4 6-6 4v14H24V36l-6-4 4-6-4-6z"/><path d="M30 20v26" opacity=".5"/><path d="M24 30h12" opacity=".5"/></g></svg>`,
+  jachtmes:`<svg viewBox="0 0 60 60"><g stroke="#241a10" fill="none" stroke-width="1.7" stroke-linecap="round"><path d="M14 44l22-22 6 2-22 22z"/><path d="M40 20l6-6"/><path d="M12 46l6 2" stroke-width="2.4"/></g></svg>`,
+  knuppel:`<svg viewBox="0 0 60 60"><g stroke="#241a10" fill="none" stroke-width="1.8" stroke-linecap="round"><path d="M16 46l18-18"/><path d="M34 28c4-6 12-8 14-2s-2 12-8 12-8-4-6-10z"/><path d="M14 48l5-5" stroke-width="3"/></g></svg>`,
+  zwaard:`<svg viewBox="0 0 60 60"><g stroke="#241a10" fill="none" stroke-width="1.8" stroke-linecap="round"><path d="M30 50V12"/><path d="M20 20h20"/><path d="M30 12l-4-6h8z" fill="#7d1f1a" stroke="none"/><path d="M27 50h6" stroke-width="2.6"/></g></svg>`,
+  leeg:`<svg viewBox="0 0 60 60"><g stroke="#241a10" fill="none" stroke-width="1.2" opacity=".45"><path d="M12 48L48 12M48 48L12 12"/><rect x="12" y="12" width="36" height="36"/></g></svg>`
+};
+
+function plaat(id, klein){
+  const src = ASSETS[id] || "";
+  const ets = ETSEN[id] || ETSEN.leeg;
+  return `<figure class="plaat${klein?" plaat--klein":""}">
+    ${src ? `<img src="${src}" alt="" onerror="this.remove()">` : ""}
+    <div class="ets">${ets}</div>
+  </figure>`;
+}
+
+/* ---------------------------------------------------------------------
+   3. UITRUSTING — lagen met gewicht, ontzag en opvallendheid
+   --------------------------------------------------------------------- */
+const ITEMS = {
+  linnen_hemd:    {naam:"Linnen hemd",        laag:"onder",  gewicht:0, ontzag:0, opval:0, noot:"Ruikt naar de was van je moeder."},
+  gelapt_wambuis: {naam:"Gelapt wambuis",     laag:"midden", gewicht:1, ontzag:0, opval:0, noot:"Drie kleuren lap, geen enkele van jou."},
+  gevechtspak:    {naam:"Leren kolder",       laag:"midden", gewicht:2, ontzag:1, opval:1, noot:"Eenvoudig gevechtspak. Houdt een mes tegen, één keer."},
+  malienkolder:   {naam:"Maliënkolder",       laag:"midden", gewicht:4, ontzag:3, opval:3, noot:"Van Weel. Achtduizend ringen, met de hand gesloten."},
+  harnas_gerlof:  {naam:"Harnas van Weel",    laag:"harnas", gewicht:5, ontzag:5, opval:5, noot:"Een deuk boven het hart die niemand meer uitklopt."},
+  jachtmes:       {naam:"Jachtmes",           laag:"wapen",  gewicht:1, ontzag:0, opval:0, bereik:0, noot:"Voor hazen. Nu voor iets anders."},
+  knuppel:        {naam:"Knuppel",            laag:"wapen",  gewicht:2, ontzag:1, opval:1, bereik:1, noot:"Breekt botten, geen huid."},
+  zwaard:         {naam:"Zwaard van Weel",    laag:"wapen",  gewicht:3, ontzag:4, opval:3, bereik:2, noot:"Op de kling staat: NIET VOOR MIJ."}
+};
+const LAAGNAMEN = {onder:"Onderkleed", midden:"Midden", harnas:"Harnas", wapen:"Wapen"};
+
+/* ---------------------------------------------------------------------
+   4. SPELSTAAT + migratie
+   --------------------------------------------------------------------- */
+const VERSIE = 1;
+
+function nieuweStaat(){
+  return {
+    v: VERSIE,
+    scene: "smidse",
+    weergave: "verhaal",
+    naam: "Renze",
+    toenaam: null,
+    munten: 0,
+    eer: 0,
+    gerucht: 0,
+    fluisters: [],
+    vlaggen: {},
+    dracht: {onder:"linnen_hemd", midden:"gelapt_wambuis", harnas:null, wapen:null},
+    kist: ["linnen_hemd","gelapt_wambuis","jachtmes"],
+    manschappen: [],
+    inschrijvingen: [
+      {tekst:"Renze, zoon van Wibbe de smid, van Hooiveld. Zeventien winters.", hand:1},
+      {tekst:"Beroep: knecht in de smidse van zijn vader.", hand:1, sleutel:"beroep"}
+    ],
+    kroniek: {aan:false, sleutel:""},
+    gezegeld: false
+  };
+}
+
+function migreer(s){
+  if(!s || typeof s !== "object") return nieuweStaat();
+  if(s.v === VERSIE) return s;
+  // Toekomstige migraties: if(s.v === 1){ ...; s.v = 2; }
+  const schoon = nieuweStaat();
+  return Object.assign(schoon, s, {v: VERSIE});
+}
+
+let S = migreer(OPSLAG.lees());
+function bewaar(){ OPSLAG.schrijf(S); }
+
+/* Afgeleide waarden */
+function gedragen(){ return ["onder","midden","harnas","wapen"].map(l=>S.dracht[l]).filter(Boolean).map(i=>ITEMS[i]); }
+function som(veld){ return gedragen().reduce((t,i)=>t+(i[veld]||0),0); }
+function uithouding(){ return Math.max(2, 12 - som("gewicht")); }
+function ontzag(){ return som("ontzag"); }
+function onopvallend(){ return Math.max(0, 10 - som("opval")); }
+function bereik(){ const w = S.dracht.wapen; return w ? (ITEMS[w].bereik||0) : 0; }
+
+function schrijf(tekst, hand, sleutel){
+  if(sleutel){ const oud = S.inschrijvingen.find(i=>i.sleutel===sleutel); if(oud) oud.doorgestreept = true; }
+  S.inschrijvingen.push({tekst, hand: hand||2, sleutel});
+}
+function fluister(tekst, punten){
+  S.gerucht += (punten||1);
+  S.fluisters.push(tekst);
+}
+
+/* ---------------------------------------------------------------------
+   5. DE PROLOOG
+   --------------------------------------------------------------------- */
+const SCENES = {
+
+  smidse: {
+    plaat:"smidse", kop:"Hooiveld, de dag na Sint-Odulf",
+    titel:"De smidse",
+    tekst:[
+      "Je vader slaat, jij houdt vast. Zo gaat het sinds je armen lang genoeg zijn. Het ijzer is oranje, de hamer valt, en buiten staat sinds een tel een paard dat te goed is voor dit dorp.",
+      "De ruiter buigt onder de balk door. Grijs bij de slapen, een maliënkolder die van binnen is versleten in plaats van van buiten. Hij kijkt niet naar je vader. Hij kijkt naar jou.",
+      "«Er is bij Vier Eiken drie keer geroofd sinds nieuwe maan,» zegt hij. «Ik heb geen tweede ridder. Ik heb iemand nodig die dit land kent en die geen ridder lijkt. Loop je mee?»"
+    ],
+    keuzes:[
+      {tekst:"«Ik loop mee.»", onder:"Zonder te vragen wat het opbrengt.",
+       naar:"gevechtspak", doe(){ S.eer += 1; schrijf("Ging mee met ridder Gerlof van Weel zonder naar de beloning te vragen.",2); }},
+      {tekst:"«Wat betaalt het?»", onder:"Een eerlijke vraag. Hij glimlacht er niet om.",
+       naar:"gevechtspak", doe(){ S.vlaggen.berekenend = true; schrijf("Vroeg eerst naar het loon. Van Weel noemde dat verstandig.",2); }},
+      {tekst:"«Mijn vader heeft me nodig.»", onder:"Waar en niet waar.",
+       naar:"smidse_aandringen"}
+    ]
+  },
+
+  smidse_aandringen: {
+    plaat:"smidse", kop:"Hooiveld", titel:"Hij wacht",
+    tekst:[
+      "Van Weel zegt niets. Hij legt een hand op de aambeeldhoorn, voelt de warmte, en kijkt naar de deur waardoor je al zeventien jaar niet bent gegaan.",
+      "«Ik ben over een uur bij de brug,» zegt hij. «Daarna niet meer.»",
+      "Je vader slaat door. Eén keer, twee keer. Bij de derde slag kijkt hij op en knikt naar de deur, kort, alsof hij een spijker recht zet."
+    ],
+    keuzes:[
+      {tekst:"Je legt de tang neer.", naar:"gevechtspak",
+       doe(){ schrijf("Verliet de smidse met de tang nog warm in de standaard.",2); }}
+    ]
+  },
+
+  gevechtspak: {
+    plaat:"vier_eiken", kop:"Op de weg naar Vier Eiken", titel:"Wat je aan hebt telt",
+    tekst:[
+      "Bij de brug gooit Van Weel je een bundel toe. Een leren kolder, gehard in wax, aan de zoom hersteld met te dikke draad. Een eenvoudig gevechtspak, niets meer.",
+      "«Onthoud dit,» zegt hij. «Wat je aan hebt bepaalt drie dingen: hoe lang je het volhoudt, hoeveel ontzag je afdwingt, en of iemand je onthoudt. Die drie vechten met elkaar. Een man in harnas wint elk gevecht dat hij niet kan vermijden — en hij kan er geen enkel vermijden.»"
+    ],
+    naar:"uitrusting_les"
+  },
+
+  spoor: {
+    plaat:"vier_eiken", kop:"Vier Eiken, laat licht", titel:"Het spoor",
+    tekst:[
+      "Vier eiken, één kruispunt, drie plaatsen om je te verstoppen. Van Weel laat je kiezen. «Ik doe wat jij zegt,» zegt hij. «Dan weet ik wat je waard bent voordat het geld kost.»"
+    ],
+    keuzes:[
+      {tekst:"De sporen lezen bij de greppel.", onder:"Wat jij kent, ken je goed.",
+       naar:"duel", doe(){ S.vlaggen.voordeel = "spoor"; S.eer += 1; schrijf("Las het spoor bij de greppel: één man, zware laarzen, links belast.",2); }},
+      {tekst:"De herbergier uithoren.", onder:"Lukt alleen als je nergens op lijkt.",
+       naar:"duel", doe(){
+         if(onopvallend() >= 8){ S.vlaggen.voordeel = "verrassing"; schrijf("Kwam als knecht binnen bij de herberg en ging als knecht weer weg. Niemand keek op.",2); }
+         else { S.vlaggen.voordeel = null; fluister("Bij de herberg van Vier Eiken vroeg een jongen in kolder naar een dief.",1); }
+       }},
+      {tekst:"Wachten tot het donker is.", onder:"Veilig, en het kost je kracht.",
+       naar:"duel", doe(){ S.vlaggen.voordeel = "donker"; S.vlaggen.vermoeid = true; }}
+    ]
+  },
+
+  sterfbed: {
+    plaat:"sterfbed", kop:"Vier Eiken, na middernacht", titel:"Wat hij nalaat",
+    tekst:[
+      "De dief ligt gebonden tegen de middelste eik en vloekt met een tandloze mond. Van Weel zit tegen de wortel ernaast, en zit daar te lang stil.",
+      "Het mes zat onder de kolder door, links, waar de ringen van binnen versleten waren. Hij heeft het je niet gezegd toen het gebeurde. Hij is een man die dat niet zegt.",
+      "«Het paard heet Vroeg,» zegt hij. «Hij trekt naar rechts, hou hem kort. Het harnas is te groot voor je. Word groter.» Daarna nog: «Breng de dief naar de schout in Beversluis. Zelf. Laat niemand anders het brengen, want dan is het niet van jou.»",
+      "Als het licht wordt is hij koud. Er is een harnas, een zwaard, een paard, en een beurs aan zijn gordel."
+    ],
+    keuzes:[
+      {tekst:"Neem harnas, zwaard en paard. De beurs gaat mee naar zijn huis.", onder:"Zoals hij het bedoelde.",
+       naar:"beloning", doe(){
+         S.kist.push("malienkolder","harnas_gerlof","zwaard");
+         S.dracht.wapen = "zwaard";
+         S.eer += 3;
+         schrijf("Bracht de beurs van Gerlof van Weel ongeopend naar diens huis.",2);
+       }},
+      {tekst:"Neem alles. Hij heeft er niets meer aan.", onder:"Niemand ziet het. Niemand hoeft het te zien.",
+       naar:"beloning", doe(){
+         S.kist.push("malienkolder","harnas_gerlof","zwaard");
+         S.dracht.wapen = "zwaard";
+         S.munten += 14;
+         S.eer += 1;
+         S.vlaggen.beurs = true;
+         fluister("De weduwe van Weel vroeg de schout waar de beurs van haar man is gebleven.",3);
+         schrijf("Erfde harnas, zwaard en paard van Gerlof van Weel.",2);
+       }},
+      {tekst:"Neem alleen het paard en het zwaard. Het harnas begraaf je met hem.", onder:"Een eigen keuze.",
+       naar:"beloning", doe(){
+         S.kist.push("zwaard");
+         S.dracht.wapen = "zwaard";
+         S.eer += 4;
+         S.vlaggen.harnas_begraven = true;
+         schrijf("Begroef Van Weel in zijn eigen harnas. Nam enkel het zwaard en het paard Vroeg.",2);
+       }}
+    ]
+  },
+
+  beloning: {
+    plaat:"poort", kop:"Beversluis, marktdag", titel:"De schout betaalt",
+    tekst:[
+      "Je rijdt de poort binnen met een gebonden man achter je zadel en een dood ridder op een kar. De schout weegt het zilver af zonder je aan te kijken en schuift het over de tafel.",
+      "«Twintig penningen voor de dief. En de kanselier wil je zien,» zegt hij. «Dat is nooit eerder gebeurd voor een smidsknecht.»"
+    ],
+    keuzes:[
+      {tekst:"Naar de kanselier.", naar:"ridderslag", doe(){ S.munten += 20; }}
+    ]
+  },
+
+  ridderslag: {
+    plaat:"ridderslag", kop:"De hofzaal van koning Everard", titel:"Een naam die je niet zelf koos",
+    tekst:[
+      "De vloer is van steen die anders klinkt dan alle steen die je kent. Er zijn tweeënveertig mensen die weten hoe dit hoort en één die het niet weet.",
+      "Everard is klein en verveeld en heeft dit vandaag al twee keer gedaan. Hij kijkt naar je kin, naar het rood in de stoppels, en beslist iets waar dertig jaar kroniek uit volgt.",
+      "«Roodbaard,» zegt hij. «Renze Roodbaard. Sta op, ridder, en breng me het volgende jaar iets dat groter is dan een dief.»"
+    ],
+    keuzes:[
+      {tekst:"Sta op.", naar:"zegel", doe(){
+        S.toenaam = "Roodbaard";
+        S.eer += 5;
+        S.munten += 30;
+        schrijf("Door koning Everard verheven tot ridder. Naam: Renze Roodbaard.",3,"beroep");
+        S.gezegeld = true;
+        S.vlaggen.zegelnieuw = true;
+      }}
+    ]
+  },
+
+  zegel: {
+    kop:"Einde van de proloog", titel:"De kaart wordt gezegeld",
+    tekst:[
+      "De schrijver draait je vel om, strooit zand, blaast het weg en drupt was. Vanaf nu is elke regel die erbij komt van jou.",
+      "Wat hierna komt is nog niet geschreven. Er liggen vier wegen open, en drie ervan leiden ergens goed heen."
+    ],
+    slot:true
+  }
+};
+
+/* ---------------------------------------------------------------------
+   6. DUEL — tempo en intentie. Stoot > Binden > Wijken > Stoot
+   --------------------------------------------------------------------- */
+const INTENTIES = {
+  stoot:  {naam:"Stoot",  verslaat:"binden", uit:2, hint:"hij houdt zijn mes laag"},
+  binden: {naam:"Binden", verslaat:"wijken", uit:1, hint:"hij zoekt je kling"},
+  wijken: {naam:"Wijken", verslaat:"stoot",  uit:0, hint:"hij haalt uit"}
+};
+let duel = null;
+
+function duelStart(){
+  duel = {
+    houding: 4,
+    vijand: 4,
+    kracht: uithouding(),
+    log: [],
+    vorige: null,
+    verloren: false,
+    raad: null,
+    klaar: false
+  };
+  const v = S.vlaggen.voordeel;
+  if(v === "spoor"){ duel.vijand = 3; duel.log.push({t:"Je wist waar hij stond voordat hij wist waar jij stond.",k:"goed"}); }
+  if(v === "verrassing"){ duel.vijand = 3; duel.kracht += 1; duel.log.push({t:"Hij herkent je niet als gevaar. Dat duurt één slag.",k:"goed"}); }
+  if(v === "donker"){ duel.log.push({t:"Het donker verbergt jullie beiden even goed.",k:""}); }
+  if(S.vlaggen.vermoeid) duel.kracht -= 2;
+  duelRaad();
+}
+
+function duelKeuzeVijand(){
+  // Leesbaar patroon: na verlies herhaalt hij, anders roteert hij.
+  if(duel.verloren && duel.vorige) return duel.vorige;
+  const r = Object.keys(INTENTIES);
+  return r[Math.floor(Math.random()*r.length)];
+}
+
+function duelRaad(){
+  duel.vijandKeuze = duelKeuzeVijand();
+  const eerlijk = Math.random() < 0.7;
+  const keys = Object.keys(INTENTIES);
+  const gok = eerlijk ? duel.vijandKeuze : keys[Math.floor(Math.random()*keys.length)];
+  duel.raad = INTENTIES[gok].hint;
+}
+
+function duelBeat(mijn){
+  const zijn = duel.vijandKeuze;
+  const kost = INTENTIES[mijn].uit;
+  duel.kracht -= kost;
+  let uitkomst;
+
+  if(mijn === zijn){
+    uitkomst = "Staal op staal. Jullie staan stil en ademen.";
+    duel.kracht -= 1;
+    duel.verloren = false;
+  } else if(INTENTIES[mijn].verslaat === zijn){
+    let schade = 1 + (bereik() >= 2 && mijn !== "stoot" ? 1 : 0);
+    if(duel.kracht <= 2){ schade = 1; uitkomst = "Je komt door, maar je arm is te zwaar om het af te maken."; }
+    else uitkomst = "Je leest hem goed. Hij wijkt en bloedt.";
+    duel.vijand -= schade;
+    duel.verloren = false;
+  } else {
+    let schade = 1;
+    if(S.dracht.harnas || S.dracht.midden === "malienkolder"){ schade = 0; uitkomst = "Zijn mes vindt je zij en glijdt weg over ijzer."; }
+    else if(S.dracht.midden === "gevechtspak"){ uitkomst = "Het leer neemt de punt. Je voelt het morgen, niet nu."; }
+    else uitkomst = "Hij haalt je open boven de heup.";
+    duel.houding -= schade;
+    duel.verloren = true;
+  }
+
+  duel.vorige = zijn;
+  duel.log.unshift({t:uitkomst, k: duel.verloren ? "slecht" : "goed"});
+  if(duel.log.length > 4) duel.log.pop();
+
+  if(duel.vijand <= 0){ duel.klaar = "gewonnen"; }
+  else if(duel.houding <= 0 || duel.kracht <= 0){ duel.klaar = "verloren"; }
+  else duelRaad();
+  render();
+}
+
+function duelAf(){
+  if(duel.klaar === "gewonnen"){
+    S.eer += 2;
+    schrijf("Nam bij Vier Eiken eigenhandig de rover gevangen die drie reizigers had beroofd.",2);
+    if(!S.kist.includes("gevechtspak")) S.kist.push("gevechtspak");
+    duel = null;
+    ga("sterfbed");
+  } else {
+    // Geen game over in de proloog: Van Weel grijpt in, en dat kost hem.
+    S.vlaggen.gerlof_greep_in = true;
+    schrijf("Werd bij Vier Eiken van de grond geraapt door Gerlof van Weel, die daarbij het mes ving.",2);
+    if(!S.kist.includes("gevechtspak")) S.kist.push("gevechtspak");
+    duel = null;
+    ga("sterfbed");
+  }
+}
+
+/* ---------------------------------------------------------------------
+   7. NAVIGATIE
+   --------------------------------------------------------------------- */
+function ga(id){
+  if(id === "uitrusting_les"){
+    S.vlaggen.les_uitrusting = true;
+    if(!S.kist.includes("gevechtspak")) S.kist.push("gevechtspak");
+    S.scene = "uitrusting_les";
+    S.weergave = "uitrusting";
+  } else if(id === "duel"){
+    S.scene = "duel"; S.weergave = "verhaal"; duelStart();
+  } else {
+    S.scene = id; S.weergave = "verhaal";
+  }
+  bewaar(); render(); window.scrollTo({top:0,behavior:"instant"});
+}
+
+function kies(sceneId, index){
+  const k = SCENES[sceneId].keuzes[index];
+  if(k.doe) k.doe();
+  bewaar();
+  ga(k.naar);
+}
+
+/* ---------------------------------------------------------------------
+   8. WEERGAVEN
+   --------------------------------------------------------------------- */
+const app = document.getElementById("app");
+
+function toonVerhaal(){
+  if(S.scene === "duel") return toonDuel();
+  if(S.scene === "uitrusting_les"){ S.weergave = "uitrusting"; return toonUitrusting(); }
+
+  const sc = SCENES[S.scene];
+  if(!sc) return `<div class="blad"><p>Dit blad is nog niet beschreven.</p></div>`;
+
+  let h = `<article class="blad">`;
+  if(sc.plaat) h += plaat(sc.plaat);
+  h += `<p class="kop">${sc.kop}</p><h1>${sc.titel}</h1>`;
+  h += sc.tekst.map(p=>`<p>${p}</p>`).join("");
+
+  if(sc.slot){
+    h += `<hr class="regel">${zegelSvg(S.vlaggen.zegelnieuw)}`;
+    S.vlaggen.zegelnieuw = false;
+    h += `<p class="label" style="text-align:center;margin-top:.6rem">Renze Roodbaard · eer ${S.eer} · ${S.munten} penningen</p>`;
+    h += `<hr class="regel"><p class="label">Nog te schrijven</p>
+      <div class="keuzes">
+        ${["Spionage voor de kanselier","Reizigers begeleiden over de Zwarte Ley","Dieven vangen voor de schout","Nemen wat niet gegeven wordt"]
+          .map(t=>`<button class="keuze" disabled style="opacity:.6;border-left-color:var(--perkament-schaduw)">${t}<small>Volgend hoofdstuk.</small></button>`).join("")}
+      </div>`;
+    h += `<p style="margin-top:1rem"><button class="knop knop--stil" onclick="opnieuw()">Begin een nieuwe kroniek</button></p>`;
+  } else if(sc.keuzes){
+    h += `<hr class="regel"><div class="keuzes">` + sc.keuzes.map((k,i)=>
+      `<button class="keuze" onclick="kies('${S.scene}',${i})">${k.tekst}${k.onder?`<small>${k.onder}</small>`:""}</button>`
+    ).join("") + `</div>`;
+  } else if(sc.naar){
+    h += `<hr class="regel"><button class="knop" onclick="ga('${sc.naar}')">Verder</button>`;
+  }
+  h += `</article>`;
+  return h;
+}
+
+function toonDuel(){
+  if(duel === null) duelStart();
+  let h = `<article class="blad">${plaat("duel")}
+    <p class="kop">Vier Eiken, tussen de wortels</p><h1>Het duel</h1>`;
+
+  if(!duel.klaar){
+    h += `<div class="tegen">
+      <div><span class="label">Jij</span><div class="balk"><i style="width:${duel.houding/4*100}%"></i></div>
+        <span class="cijfers" style="font-size:.8rem">kracht ${Math.max(0,duel.kracht)}</span></div>
+      <div><span class="label">De rover</span><div class="balk"><i style="width:${Math.max(0,duel.vijand)/4*100}%"></i></div>
+        <span class="cijfers" style="font-size:.8rem">mes, kort bereik</span></div>
+    </div>`;
+    h += `<p class="raad">Van Weel, halfluid: «${duel.raad}.»</p>`;
+    h += duel.log.map(l=>`<p class="beat" style="border-left-color:${l.k==="slecht"?"var(--zegel)":"var(--inkt-bleek)"}">${l.t}</p>`).join("");
+    h += `<hr class="regel"><div class="keuzes">
+      <button class="keuze" onclick="duelBeat('stoot')">Stoot<small>Verslaat binden. Kost twee kracht.</small></button>
+      <button class="keuze" onclick="duelBeat('binden')">Binden<small>Verslaat wijken. Kost één kracht.</small></button>
+      <button class="keuze" onclick="duelBeat('wijken')">Wijken<small>Verslaat de stoot. Kost geen kracht.</small></button>
+    </div>`;
+  } else if(duel.klaar === "gewonnen"){
+    h += `<p>Hij laat het mes vallen voordat je hem raakt. Dat doet iemand die dit vaker heeft gedaan en die weet wanneer het over is.</p>
+      <p>Je bindt hem met je eigen gordel. Achter je zegt Van Weel: «Goed.» En daarna niets meer, wat je pas veel later begrijpt.</p>
+      <hr class="regel"><button class="knop" onclick="duelAf()">Verder</button>`;
+  } else {
+    h += `<p>Je ligt in de bladeren en de lucht wil niet naar binnen. Boven je gaat iets snel en zwaar, en dan is het stil.</p>
+      <p>Van Weel staat over je heen met de rover onder zijn knie. Hij hijgt door zijn tanden. «Sta op,» zegt hij. «Bind hem.» Er zit iets donkers onder zijn kolder, links.</p>
+      <hr class="regel"><button class="knop" onclick="duelAf()">Verder</button>`;
+  }
+  return h + `</article>`;
+}
+
+function toonUitrusting(){
+  const les = S.scene === "uitrusting_les";
+  let h = "";
+  if(les){
+    h += `<article class="blad blad--dun">
+      <p class="kop">De les van Van Weel</p>
+      <p style="margin:0">Kies wat je aantrekt. Gewicht kost kracht in het gevecht, ontzag opent deuren, opvallendheid sluit ze weer. Trek de kolder aan en ga verder.</p>
+    </article>`;
+  }
+  h += `<article class="blad"><p class="kop">Uitrusting</p><h1>Wat je draagt</h1>
+    <div class="waarden">
+      <div class="waarde"><span class="label">Kracht</span><b>${uithouding()}</b></div>
+      <div class="waarde"><span class="label">Ontzag</span><b>${ontzag()}</b></div>
+      <div class="waarde"><span class="label">Onopvallend</span><b>${onopvallend()}</b></div>
+      <div class="waarde"><span class="label">Gewicht</span><b>${som("gewicht")}</b></div>
+    </div><hr class="regel"><div class="lagen">`;
+
+  for(const laag of ["onder","midden","harnas","wapen"]){
+    const huidig = S.dracht[laag];
+    const opties = S.kist.filter(id=>ITEMS[id].laag===laag);
+    h += `<div class="laag">
+      <div>${plaat(huidig || "leeg", true)}</div>
+      <div>
+        <span class="label">${LAAGNAMEN[laag]}</span>
+        <div class="naam">${huidig ? ITEMS[huidig].naam : "— niets —"}</div>
+        <div class="cijfers">${huidig ? ITEMS[huidig].noot : "Deze laag is leeg."}</div>
+        <div class="kies">
+          ${opties.map(id=>`<button aria-pressed="${id===huidig}" onclick="trekAan('${laag}','${id}')">${ITEMS[id].naam}</button>`).join("")}
+          ${huidig && laag!=="onder" ? `<button onclick="trekAan('${laag}',null)">uit</button>`:""}
+        </div>
+      </div>
+    </div>`;
+  }
+  h += `</div>`;
+  if(les){
+    const klaar = S.dracht.midden === "gevechtspak";
+    h += `<hr class="regel">
+      <button class="knop" ${klaar?"":"disabled style=opacity:.5"} onclick="ga('spoor')">Naar Vier Eiken</button>
+      ${klaar?"":`<p class="cijfers" style="margin-top:.5rem">Trek eerst de leren kolder aan.</p>`}`;
+  }
+  return h + `</article>`;
+}
+
+function trekAan(laag, id){
+  S.dracht[laag] = id === "null" ? null : id;
+  if(id === null) S.dracht[laag] = null;
+  bewaar(); render();
+}
+
+function zegelSvg(nieuw){
+  return `<svg class="zegel ${nieuw?"zegel--druk":""}" viewBox="0 0 100 100" role="img" aria-label="Zegel van Renze Roodbaard">
+    <circle cx="50" cy="50" r="46" fill="#7d1f1a"/>
+    <circle cx="50" cy="50" r="46" fill="none" stroke="#521310" stroke-width="3"/>
+    <circle cx="50" cy="50" r="37" fill="none" stroke="#a33a30" stroke-width="1.5" stroke-dasharray="3 3"/>
+    <path d="M50 26v44M38 40h24M50 26l-5-8h10z" stroke="#f0d9a8" stroke-width="3" fill="#f0d9a8" stroke-linecap="round"/>
+    <path d="M28 62c8 10 36 10 44 0" stroke="#f0d9a8" stroke-width="2" fill="none"/>
+  </svg>`;
+}
+
+function toonKaart(){
+  let h = `<article class="blad"><p class="kop">De omgeving van Beversluis</p><h1>Kaart</h1>
+  <svg class="kaart" viewBox="0 0 320 220" role="img" aria-label="Vergeelde kaart van de omgeving">
+    <defs>
+      <filter id="oud"><feTurbulence type="fractalNoise" baseFrequency=".04" numOctaves="2" result="n"/>
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="2.4"/></filter>
+    </defs>
+    <rect width="320" height="220" fill="#d8c493"/>
+    <g filter="url(#oud)">
+      <path class="pad" d="M0 150c40-6 60-26 96-24s52 18 84 12 60-30 96-24" stroke-width="2.6" opacity=".7"/>
+      <path class="pad" d="M52 176c26-18 44-16 64-30s40-30 66-26 44 22 74 16" stroke-dasharray="6 5"/>
+      <path d="M18 60c30 10 44-8 70 0s34 26 62 20 46-22 74-14" stroke="#3d5d4a" stroke-width="1.2" fill="none" opacity=".6"/>
+      <g stroke="#241a10" fill="none" stroke-width="1.1" opacity=".75">
+        <path d="M120 44c4-6 10-6 14 0M136 40c4-6 10-6 14 0M112 52c4-6 10-6 14 0"/>
+      </g>
+      <circle cx="52" cy="176" r="4" fill="#241a10"/><text x="60" y="180">HOOIVELD</text>
+      <circle cx="182" cy="120" r="4" fill="#241a10"/><text x="190" y="116">VIER EIKEN</text>
+      <circle cx="286" cy="112" r="5" fill="#7d1f1a"/><text x="240" y="102">BEVERSLUIS</text>
+      <text x="150" y="66" opacity=".8">WEELBOS</text>
+      <text x="24" y="56" opacity=".8">de Zwarte Ley</text>
+    </g>
+    ${S.gezegeld ? "" : `<rect class="mist" x="212" y="76" width="108" height="70"/>`}
+    <text x="8" y="212" opacity=".6">Getekend voor de schout, jaar van de late oogst</text>
+  </svg>`;
+  h += `<p class="cijfers" style="margin-top:.7rem">${S.gezegeld
+    ? "Beversluis is opengeslagen. Er is nog veel wit perkament naar het oosten."
+    : "Een deel van de kaart is nog onbeschreven. Reis erheen om het te laten tekenen."}</p>`;
+  return h + `</article>`;
+}
+
+function toonVel(){
+  const handKlasse = h => h===3 ? "inschrijving--derde" : h===2 ? "inschrijving--tweede" : "";
+  let h = `<article class="blad">
+    <p class="kop">Persoonskaart · rol van de schout te Beversluis</p>
+    <h1>${S.naam}${S.toenaam ? " " + S.toenaam : ""}</h1>
+    <div class="hand">
+      ${S.inschrijvingen.map(i=>`<p class="inschrijving ${handKlasse(i.hand)} ${i.doorgestreept?"doorgestreept":""}">${i.tekst}</p>`).join("")}
+    </div>
+    <hr class="regel">
+    <div class="waarden">
+      <div class="waarde"><span class="label">Eer</span><b>${S.eer}</b></div>
+      <div class="waarde"><span class="label">Penningen</span><b>${S.munten}</b></div>
+      <div class="waarde"><span class="label">Kracht</span><b>${uithouding()}</b></div>
+      <div class="waarde"><span class="label">Ontzag</span><b>${ontzag()}</b></div>
+      <div class="waarde"><span class="label">Onopvallend</span><b>${onopvallend()}</b></div>
+      <div class="waarde"><span class="label">Manschappen</span><b>${S.manschappen.length}</b></div>
+    </div>`;
+
+  if(S.fluisters.length){
+    h += `<hr class="regel"><p class="label">Wat er gefluisterd wordt</p>
+      ${S.fluisters.map(f=>`<p class="fluister">«${f}»</p>`).join("")}
+      <p class="cijfers">Gerucht staat los van eer. De koning leest je kaart; het land vertelt elkaar iets anders.</p>`;
+  }
+  if(S.gezegeld) h += zegelSvg(false);
+  h += `</article>`;
+
+  h += `<article class="blad blad--dun">
+    <p class="label">De kroniekschrijver</p>
+    <p style="margin:.3rem 0 .6rem">Zet dit aan en het spel laat geruchten en tafelpraat live schrijven in plaats van uit een vaste lijst te trekken.</p>
+    <p style="margin:0 0 .6rem"><button class="knop ${S.kroniek.aan?"":"knop--stil"}" onclick="kroniekToggle()">${S.kroniek.aan?"Kroniekschrijver staat aan":"Kroniekschrijver aanzetten"}</button></p>`;
+  if(S.kroniek.aan){
+    h += `<p class="cijfers">Binnen Claude werkt dit zonder sleutel. Op GitHub Pages heb je je eigen API-sleutel nodig, of beter: een proxy zoals een Netlify Function, zodat de sleutel niet in de pagina staat.</p>
+      <p><input type="password" placeholder="API-sleutel (optioneel, blijft in dit apparaat)" value="${S.kroniek.sleutel||""}" oninput="S.kroniek.sleutel=this.value;bewaar()"></p>
+      <p><button class="knop knop--stil" onclick="kroniekVraag()">Laat een gerucht schrijven</button></p>
+      <div id="kroniekuit"></div>`;
+  }
+  h += `<hr class="regel"><p class="cijfers">Opslag: ${OPSLAG.duurzaam?"in dit apparaat bewaard":"alleen in het geheugen (dit venster staat opslag niet toe)"} · versie ${S.v}</p>
+    <p><button class="knop knop--stil" onclick="opnieuw()">Wis en begin opnieuw</button></p></article>`;
+  return h;
+}
+
+/* ---------------------------------------------------------------------
+   9. KRONIEKSCHRIJVER — optionele AI-laag
+   --------------------------------------------------------------------- */
+function kroniekToggle(){ S.kroniek.aan = !S.kroniek.aan; bewaar(); render(); }
+
+async function kroniekVraag(){
+  const uit = document.getElementById("kroniekuit");
+  uit.innerHTML = `<p class="wacht">De schrijver snijdt zijn pen bij…</p>`;
+  const staat = {
+    naam: (S.naam + " " + (S.toenaam||"")).trim(),
+    eer: S.eer, gerucht: S.gerucht, penningen: S.munten,
+    dracht: gedragen().map(i=>i.naam),
+    daden: S.inschrijvingen.map(i=>i.tekst),
+    bestaandeFluisters: S.fluisters
+  };
+  const prompt = `Je bent de kroniekschrijver van een middeleeuws spel in het Nederlands. Toon: droog, concreet, zonder pathos, geen moderne woorden.
+Spelstaat: ${JSON.stringify(staat)}
+Schrijf één nieuw gerucht dat in een herberg over deze ridder verteld wordt. Het moet passen bij zijn daden en bij zijn geruchtwaarde (hoger = kwaadaardiger). Maximaal 30 woorden.
+Antwoord met UITSLUITEND JSON, zonder toelichting en zonder markdown: {"fluister":"...","geruchtDelta":0}`;
+  try{
+    const headers = {"Content-Type":"application/json","anthropic-dangerous-direct-browser-access":"true"};
+    if(S.kroniek.sleutel){ headers["x-api-key"] = S.kroniek.sleutel; headers["anthropic-version"] = "2023-06-01"; }
+    const r = await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST", headers,
+      body: JSON.stringify({model:"claude-sonnet-4-6", max_tokens:1000, messages:[{role:"user",content:prompt}]})
+    });
+    if(!r.ok) throw new Error("status " + r.status);
+    const d = await r.json();
+    const tekst = (d.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n").replace(/```json|```/g,"").trim();
+    const j = JSON.parse(tekst);
+    fluister(j.fluister, j.geruchtDelta || 0);
+    bewaar(); render();
+  }catch(e){
+    uit.innerHTML = `<p class="cijfers">De schrijver antwoordt niet (${e.message}). Op GitHub Pages heb je een sleutel of een proxy nodig; het spel loopt zonder hem verder.</p>`;
+  }
+}
+
+/* ---------------------------------------------------------------------
+   10. RENDER + riem
+   --------------------------------------------------------------------- */
+const RIEM = [
+  {id:"verhaal",   naam:"Verhaal",  icoon:`<svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h6"/></svg>`},
+  {id:"kaart",     naam:"Kaart",    icoon:`<svg viewBox="0 0 24 24"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/></svg>`},
+  {id:"vel",       naam:"Kaart van Renze", icoon:`<svg viewBox="0 0 24 24"><path d="M6 3h12v18H6z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>`},
+  {id:"uitrusting",naam:"Uitrusting",icoon:`<svg viewBox="0 0 24 24"><path d="M9 3h6l3 4-2 3 2 3-3 2v6H9v-6l-3-2 2-3-2-3z"/></svg>`}
+];
+
+function render(){
+  const w = S.weergave;
+  app.innerHTML =
+    w === "kaart"      ? toonKaart() :
+    w === "vel"        ? toonVel() :
+    w === "uitrusting" ? toonUitrusting() :
+                         toonVerhaal();
+  document.getElementById("riem").innerHTML = RIEM.map(t=>
+    `<button aria-current="${t.id===w}" onclick="naar('${t.id}')">${t.icoon}<span>${t.naam}</span></button>`
+  ).join("");
+}
+function naar(id){
+  if(S.scene === "uitrusting_les" && id !== "uitrusting"){ S.weergave = id; render(); return; }
+  S.weergave = id; bewaar(); render();
+}
+function opnieuw(){
+  if(!confirm("De hele kroniek wissen en opnieuw beginnen?")) return;
+  OPSLAG.wis(); S = nieuweStaat(); duel = null; bewaar(); render(); window.scrollTo({top:0});
+}
+
+render();
+</script>
+</body>
+</html>
