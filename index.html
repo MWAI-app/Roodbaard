@@ -156,6 +156,17 @@ button{font:inherit;cursor:pointer}
 .kaart text{font-family:var(--kapitaal);font-size:26px;fill:var(--inkt);letter-spacing:.08em}
 .kaart .mist{fill:var(--perkament-diep);opacity:.94}
 .plattegrond{width:100%;height:auto;display:block;margin:.7rem 0 0;border:1px solid var(--perkament-schaduw)}
+.kaart-wrap{position:relative}
+.hotspot{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:.2rem;background:none;border:0;padding:.3rem;margin:0;cursor:pointer;text-align:center}
+.hotspot .merk{width:1.7rem;height:1.7rem;border-radius:50%;border:2px solid #7d1f1a;background:rgba(242,230,200,.6);display:grid;place-items:center;box-shadow:0 1px 3px rgba(0,0,0,.4);transition:transform .15s,background .15s}
+.hotspot .merk svg{width:62%;height:62%}
+.hotspot .merk svg path{stroke:#7d1f1a;stroke-width:2.6;stroke-linecap:round}
+.hotspot .label{font-family:var(--kapitaal);font-size:.62rem;letter-spacing:.05em;text-transform:uppercase;color:var(--inkt);background:rgba(242,230,200,.88);padding:.1rem .4rem;white-space:nowrap;border:1px solid var(--perkament-schaduw)}
+.hotspot:hover .merk,.hotspot:focus-visible .merk{background:rgba(125,31,26,.2);transform:scale(1.14)}
+.hotspot--dicht{cursor:default}
+.hotspot--dicht .merk{opacity:.5;border-style:dashed}
+.hotspot--dicht .label{opacity:.6}
+.kaart-wenk{margin:.55rem 0 0;font-size:.82rem;color:var(--inkt-bleek)}
 
 /* ---------- Onderriem ---------- */
 .riem{
@@ -1338,9 +1349,33 @@ function toonKaartOud(){
 
 /* De kaart is het hoofdscherm: positie groot, tekst/keuzes klein eronder.
    Een route kiezen of een gebeurtenis tegenkomen opent een los tussendoorscherm. */
+function kaartHotspots(){
+  let h = "";
+  for(const id in PLAATSEN){
+    if(id === S.locatie) continue;
+    const plaats = PLAATSEN[id];
+    const links = plaats.x/1448*100, top = plaats.y/1086*100;
+    const opties = ROUTES[routeKey(S.locatie, id)];
+    const kruisje = `<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>`;
+    if(!opties){
+      h += `<button class="hotspot hotspot--dicht" type="button" disabled
+        style="left:${links}%;top:${top}%" title="Nog geen route uitgestippeld naar ${plaats.naam}.">
+        <span class="merk">${kruisje}</span><span class="label">${plaats.naam}</span>
+      </button>`;
+    } else {
+      h += `<button class="hotspot" type="button" onclick="reisKiezen('${id}')"
+        style="left:${links}%;top:${top}%" title="Reis naar ${plaats.naam} — ${opties.length} route${opties.length>1?"s":""} bekend.">
+        <span class="merk">${kruisje}</span><span class="label">${plaats.naam}</span>
+      </button>`;
+    }
+  }
+  return h;
+}
+
 function toonKaartReizen(){
   const hier = PLAATSEN[S.locatie];
-  let h = `<article class="blad"><p class="kop">Je bevindt je in ${hier.naam}</p><h1>Kaart</h1>${kaartSvg()}`;
+  let h = `<article class="blad"><p class="kop">Je bevindt je in ${hier.naam}</p><h1>Kaart</h1>
+    <div class="kaart-wrap">${kaartSvg()}${(!reis || reis.fase !== "onderweg") ? kaartHotspots() : ""}</div>`;
 
   if(reis && reis.fase === "onderweg"){
     h += `<p class="cijfers" style="margin-top:.6rem">Etappe ${reis.etappe} van ${reis.route.etappes} — onderweg naar ${PLAATSEN[reis.naar].naam}, ${reis.route.naam.toLowerCase()}.</p>`;
@@ -1349,18 +1384,7 @@ function toonKaartReizen(){
         <p style="margin-top:.6rem"><button class="knop" onclick="reisVerder()">Rijd verder</button></p>`;
     }
   } else {
-    h += `<hr class="regel"><div class="keuzes">`;
-    for(const id in PLAATSEN){
-      if(id === S.locatie) continue;
-      const plaats = PLAATSEN[id];
-      const opties = ROUTES[routeKey(S.locatie, id)];
-      if(!opties){
-        h += `<button class="keuze" disabled style="opacity:.5;border-left-color:var(--perkament-schaduw)">${plaats.naam}<small>Nog geen route uitgestippeld hierheen.</small></button>`;
-      } else {
-        h += `<button class="keuze" onclick="reisKiezen('${id}')">Reis naar ${plaats.naam}<small>${opties.length} route${opties.length>1?"s":""} bekend.</small></button>`;
-      }
-    }
-    h += `</div>`;
+    h += `<p class="kaart-wenk">Klik op een plek op de kaart om ernaartoe te reizen.</p>`;
     if(S.locatie === "beversluis"){
       h += `<img class="plattegrond" src="${ASSETS.beversluis_plattegrond}" alt="Plattegrond van Beversluis" onerror="this.remove()">`;
     }
