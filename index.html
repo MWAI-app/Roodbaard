@@ -153,11 +153,9 @@ button{font:inherit;cursor:pointer}
 
 /* ---------- Kaart ---------- */
 .kaart{width:100%;height:auto;display:block}
-.kaart .pad{stroke:var(--inkt);stroke-width:1.6;fill:none;stroke-dasharray:400;stroke-dashoffset:0;animation:trekken 1.6s ease-out both}
-@keyframes trekken{from{stroke-dashoffset:400}to{stroke-dashoffset:0}}
-@media (prefers-reduced-motion:reduce){.kaart .pad{animation:none}}
-.kaart text{font-family:var(--kapitaal);font-size:9px;fill:var(--inkt);letter-spacing:.08em}
+.kaart text{font-family:var(--kapitaal);font-size:26px;fill:var(--inkt);letter-spacing:.08em}
 .kaart .mist{fill:var(--perkament-diep);opacity:.94}
+.plattegrond{width:100%;height:auto;display:block;margin:.7rem 0 0;border:1px solid var(--perkament-schaduw)}
 
 /* ---------- Onderriem ---------- */
 .riem{
@@ -249,6 +247,8 @@ const OPSLAG = (() => {
    2. ASSETS — vaste paden; ontbreekt het bestand, dan verschijnt de ets
    --------------------------------------------------------------------- */
 const ASSETS = {
+  landkaart:   "assets/kaarten/landkaart.webp",
+  beversluis_plattegrond: "assets/kaarten/beversluis-plattegrond.webp",
   smidse:      "assets/scene/smidse.webp",
   vier_eiken:  "assets/scene/vier-eiken.webp",
   duel:        "assets/scene/duel.webp",
@@ -760,9 +760,9 @@ function gevangenNemen(soort){
    5c. DE KAART EN DE WEG — zelf reizen, routes kiezen, iets tegenkomen
    --------------------------------------------------------------------- */
 const PLAATSEN = {
-  hooiveld:   {naam:"Hooiveld",   x:52,  y:176},
-  vier_eiken: {naam:"Vier Eiken", x:182, y:120},
-  beversluis: {naam:"Beversluis", x:286, y:112}
+  hooiveld:   {naam:"Hooiveld",   x:195,  y:715},
+  vier_eiken: {naam:"Vier Eiken", x:705,  y:490},
+  beversluis: {naam:"Beversluis", x:1275, y:385}
 };
 
 const ROUTES = {
@@ -1315,28 +1315,11 @@ function kaartSvg(){
       renze = PLAATSEN[S.locatie];
     }
   }
-  return `<svg class="kaart" viewBox="0 0 320 220" role="img" aria-label="Vergeelde kaart van de omgeving">
-    <defs>
-      <filter id="oud"><feTurbulence type="fractalNoise" baseFrequency=".04" numOctaves="2" result="n"/>
-        <feDisplacementMap in="SourceGraphic" in2="n" scale="2.4"/></filter>
-    </defs>
-    <rect width="320" height="220" fill="#d8c493"/>
-    <g filter="url(#oud)">
-      <path class="pad" d="M0 150c40-6 60-26 96-24s52 18 84 12 60-30 96-24" stroke-width="2.6" opacity=".7"/>
-      <path class="pad" d="M52 176c26-18 44-16 64-30s40-30 66-26 44 22 74 16" stroke-dasharray="6 5"/>
-      <path d="M18 60c30 10 44-8 70 0s34 26 62 20 46-22 74-14" stroke="#3d5d4a" stroke-width="1.2" fill="none" opacity=".6"/>
-      <g stroke="#241a10" fill="none" stroke-width="1.1" opacity=".75">
-        <path d="M120 44c4-6 10-6 14 0M136 40c4-6 10-6 14 0M112 52c4-6 10-6 14 0"/>
-      </g>
-      <circle cx="52" cy="176" r="4" fill="#241a10"/><text x="60" y="180">HOOIVELD</text>
-      <circle cx="182" cy="120" r="4" fill="#241a10"/><text x="190" y="116">VIER EIKEN</text>
-      <circle cx="286" cy="112" r="5" fill="#7d1f1a"/><text x="240" y="102">BEVERSLUIS</text>
-      <text x="150" y="66" opacity=".8">WEELBOS</text>
-      <text x="24" y="56" opacity=".8">de Zwarte Ley</text>
-    </g>
-    ${S.gezegeld ? "" : `<rect class="mist" x="212" y="76" width="108" height="70"/>`}
-    ${renze ? `<circle cx="${renze.x}" cy="${renze.y}" r="7" fill="none" stroke="#7d1f1a" stroke-width="1.6"><animate attributeName="r" values="6;8;6" dur="2s" repeatCount="indefinite"/></circle>` : ""}
-    <text x="8" y="212" opacity=".6">Getekend voor de schout, jaar van de late oogst</text>
+  return `<svg class="kaart" viewBox="0 0 1448 1086" role="img" aria-label="Landkaart van de omgeving van Beversluis">
+    <image href="${ASSETS.landkaart}" x="0" y="0" width="1448" height="1086" preserveAspectRatio="xMidYMid slice"/>
+    ${S.gezegeld ? "" : `<rect class="mist" x="1140" y="230" width="308" height="300"/>`}
+    ${renze ? `<circle cx="${renze.x}" cy="${renze.y}" r="16" fill="none" stroke="#7d1f1a" stroke-width="3.5"><animate attributeName="r" values="14;19;14" dur="2s" repeatCount="indefinite"/></circle>` : ""}
+    <text x="24" y="1058" opacity=".7">Getekend voor de schout, jaar van de late oogst</text>
   </svg>`;
 }
 
@@ -1378,6 +1361,9 @@ function toonKaartReizen(){
       }
     }
     h += `</div>`;
+    if(S.locatie === "beversluis"){
+      h += `<img class="plattegrond" src="${ASSETS.beversluis_plattegrond}" alt="Plattegrond van Beversluis" onerror="this.remove()">`;
+    }
   }
   h += `</article>`;
 
