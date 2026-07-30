@@ -271,6 +271,7 @@ const ASSETS = {
   landkaart:   "assets/kaarten/landkaart.webp",
   beversluis_plattegrond: "assets/kaarten/beversluis-plattegrond.webp",
   galgenboom:  "assets/scene/galgenboom.webp",
+  wegkapel:    "assets/scene/wegkapel.webp",
   smidse:      "assets/scene/smidse.webp",
   vier_eiken:  "assets/scene/vier-eiken.webp",
   duel:        "assets/scene/duel.webp",
@@ -354,6 +355,11 @@ const ETSEN = {
     <path d="M100 74V18c0-5 8-8 14-4" stroke-width="2.2"/><path d="M100 28c-16-2-34 3-52 12"/>
     <path d="M60 40v5" stroke-width="1.3"/><path d="M56 45h8v17a4 4 0 01-8 0z" fill="#241a10" opacity=".8" stroke="none"/>
     <path d="M14 66c8-3 20-4 26 0s4 8-4 8-16-4-22-8z" opacity=".55"/>
+    <path d="M8 74h104" stroke-width=".8" opacity=".5"/></g></svg>`,
+  wegkapel:`<svg viewBox="0 0 120 80"><g stroke="#241a10" fill="none" stroke-width="1.6" stroke-linecap="round">
+    <path d="M40 72V38h40v34"/><path d="M34 38l26-16 26 16"/><path d="M60 22V10M55 15h10" stroke-width="1.8"/>
+    <path d="M50 72V50h20v22" stroke-width="1.3" opacity=".7"/>
+    <g stroke-width="1.1" opacity=".75"><path d="M46 66v-6M50 66v-8M54 66v-6M58 66v-9M62 66v-6"/></g>
     <path d="M8 74h104" stroke-width=".8" opacity=".5"/></g></svg>`,
   leeg:`<svg viewBox="0 0 60 60"><g stroke="#241a10" fill="none" stroke-width="1.2" opacity=".45"><path d="M12 48L48 12M48 48L12 12"/><rect x="12" y="12" width="36" height="36"/></g></svg>`
 };
@@ -954,6 +960,7 @@ const ROUTES = {
       id:"hoofdweg_akkers", naam:"De hoofdweg", etappes:2, risico:.2,
       omschrijving:"Een brede, vaste weg langs de akkers, voorbij de wegkapel. Karren en boeren delen hem met je.",
       kenmerken:["Veilig","Vlak boerenland","Veel volk onderweg"],
+      passeertWegkapel:true,
       gebeurtenissen:[GEB_HOEFAFDRUKKEN, GEB_BEDELAAR, GEB_MARSKRAMER]
     }
   ],
@@ -1015,6 +1022,7 @@ function reisEtappe(){
   reis.uitkomst = null;
   reis.gebeurtenis = null;
   reis.galgenboom = null;
+  reis.wegkapel = false;
   if(reis.etappe > reis.route.etappes){
     const van = PLAATSEN[reis.van].naam, naar = PLAATSEN[reis.naar].naam;
     schrijf(`Reisde van ${van} naar ${naar} — ${reis.route.naam}.`,2);
@@ -1025,6 +1033,11 @@ function reisEtappe(){
   }
   if(reis.route.passeertGalgenboom && !S.vlaggen.galgenboom_lot && reis.etappe === 1){
     reis.galgenboom = "keuze";
+    bewaar(); render();
+    return;
+  }
+  if(reis.route.passeertWegkapel && !S.vlaggen.wegkapel_lot && reis.etappe === 1){
+    reis.wegkapel = true;
     bewaar(); render();
     return;
   }
@@ -1083,6 +1096,32 @@ function galgenboomRedden(naarId){
   S.locatie = naarId;
   reis = null;
   bewaar(); render(); window.scrollTo({top:0});
+}
+
+/* De wegkapel: net als de galgenboom een eenmalige gescripte ontmoeting,
+   de eerste keer dat een pad er langs komt. Geen aparte etappe-onderbreking
+   nodig — de reis loopt na de keuze gewoon door. */
+function wegkapelKiezen(keuze){
+  S.vlaggen.wegkapel_lot = keuze;
+  if(keuze === "gebeden"){
+    S.eer += 1;
+    schrijf("Bad kort bij een onverwacht kostbaar Mariabeeld in een wegkapel.",2);
+    reis.uitkomst = "Je knielt kort op de vochtige vloer. De kaarsen flakkeren met de tocht van de deuropening, maar niet één dooft. Wie dit beeld hier zette, en waarom, vraag je niet. Buiten wacht het pad.";
+  } else if(keuze === "gestolen"){
+    const vondst = 35 + Math.floor(Math.random()*21);
+    S.munten += vondst;
+    S.eer = Math.max(0, S.eer - 4);
+    schrijf(`Nam een kostbaar Mariabeeld mee uit een wegkapel — ${vondst} penningen waard.`,2);
+    reis.uitkomst = `Het beeld is zwaarder dan het eruitziet, en kouder dan gewijd goud hoort te zijn. Je wikkelt het in je mantel voor iemand het mist. ${vondst} penningen, schat je, misschien meer in Beversluis. Een kapelletje van baksteen en verweerd hout bewaart geen beeld dat een stad kan kopen zonder dat iemand zich dat ooit afvraagt.`;
+  } else {
+    const gift = Math.min(S.munten, 2 + Math.floor(Math.random()*4));
+    S.munten -= gift;
+    S.eer += 2;
+    schrijf("Liet een gift achter bij een wegkapel met een onverwacht kostbaar Mariabeeld.",2);
+    reis.uitkomst = `Je legt ${gift > 0 ? gift + " penningen" : "wat je hebt"} bij de andere gaven op het altaarkleed — linten, een verdorde bloem, een kinderschoentje. Het is niets vergeleken met wat er al staat te branden. Het voelt toch als het enige juiste wat je vandaag hebt gedaan.`;
+  }
+  reis.wegkapel = false;
+  bewaar(); render();
 }
 
 /* ---------------------------------------------------------------------
@@ -1566,7 +1605,7 @@ function toonKaartReizen(){
 
   if(reis && reis.fase === "onderweg"){
     h += `<p class="cijfers" style="margin-top:.6rem">Etappe ${reis.etappe} van ${reis.route.etappes} — onderweg naar ${PLAATSEN[reis.naar].naam}, ${reis.route.naam.toLowerCase()}.</p>`;
-    if(!reis.gebeurtenis && !reis.galgenboom){
+    if(!reis.gebeurtenis && !reis.galgenboom && !reis.wegkapel){
       h += `<p style="margin:.3rem 0 0">${reis.uitkomst}</p>
         <p style="margin-top:.6rem"><button class="knop" onclick="reisVerder()">Rijd verder</button></p>`;
     }
@@ -1580,6 +1619,7 @@ function toonKaartReizen(){
 
   if(reis && reis.fase === "route") h += tussendoorRoute();
   if(reis && reis.fase === "onderweg" && reis.galgenboom) h += tussendoorGalgenboom();
+  else if(reis && reis.fase === "onderweg" && reis.wegkapel) h += tussendoorWegkapel();
   else if(reis && reis.fase === "onderweg" && reis.gebeurtenis) h += tussendoorGebeurtenis();
   return h;
 }
@@ -1725,6 +1765,20 @@ function tussendoorGalgenboom(){
       <button class="keuze" onclick="galgenboomKiezen('laten')">Laat hem hangen.<small>Wie hem ophing, had daar een reden voor. Niet de jouwe om te ontkennen.</small></button>
       <button class="keuze" onclick="galgenboomKiezen('doden')">Geef hem de genadedolk.<small>Eén stoot. Sneller dan de kraaien.</small></button>
       <button class="keuze" onclick="galgenboomKiezen('redden')">Snijd hem los.<small>Wat hij ook deed, dit is geen dood voor een mens.</small></button>
+    </div>
+  </div></div>`;
+}
+
+function tussendoorWegkapel(){
+  return `<div class="overlay-achtergrond"><div class="overlay-blad">
+    <p class="kop">De wegkapel</p><h1>Een beeld dat hier niet hoort</h1>
+    ${plaat("wegkapel")}
+    <p>Halverwege de akkers staat een wegkapel, niet groter dan een schapenstal — zo een zie je wel vaker langs het pad. Wat erin staat, hoort daar niet. Een Maria met kind, vergulde kroon, een gewaad in rood en goud dat het kaarslicht vangt alsof het gisteren nog geschilderd is. Tientallen kaarsen branden op het altaarkleed, vers, pas aangestoken. Zo'n beeld hoort in een kathedraal, niet in een hutje van baksteen en verweerd hout langs een modderig pad.</p>
+    <p>Wat doe je?</p>
+    <div class="keuzes" style="margin-top:.6rem">
+      <button class="keuze" onclick="wegkapelKiezen('gebeden')">Bid er kort.<small>Wat het hier doet, is niet jouw zaak. Je knielt, en gaat weer verder.</small></button>
+      <button class="keuze" onclick="wegkapelKiezen('gestolen')">Neem het beeld mee.<small>Kostbaar genoeg om een leven te veranderen — of te beëindigen, als iemand erachter komt.</small></button>
+      <button class="keuze" onclick="wegkapelKiezen('geofferd')">Laat een penning achter.<small>Voor het onderhoud van een kapel die dit kennelijk nodig heeft. Of net niet.</small></button>
     </div>
   </div></div>`;
 }
