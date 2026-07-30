@@ -177,9 +177,9 @@ button{font:inherit;cursor:pointer}
 .riem button[aria-current="true"]{color:#f0dda9;border-bottom-color:var(--verguld)}
 .riem svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.5}
 
-/* Ontwikkelknop: snel de kroniek wissen om plaatjes te controleren */
+/* Ontwikkelknoppen: snel wissen of doorspringen om nieuwe onderdelen te controleren */
+.ontwikkel{position:fixed;top:.5rem;right:.5rem;z-index:20;display:flex;gap:.4rem}
 .herstart{
-  position:fixed;top:.5rem;right:.5rem;z-index:20;
   background:rgba(34,24,18,.88);color:#d9c393;border:1px solid var(--leer-naad);
   font-family:var(--kapitaal);font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;
   padding:.4rem .6rem;border-radius:2px;
@@ -192,7 +192,10 @@ textarea,input[type=password]{width:100%;font:inherit;background:rgba(255,255,25
 </style>
 </head>
 <body>
-<button id="herstart" class="herstart" onclick="opnieuw()" title="Wis de kroniek en begin opnieuw bij de smidse">⟲ Herstart</button>
+<div class="ontwikkel">
+  <button class="herstart" onclick="springNaarKaart()" title="Sla de proloog over en spring direct naar de kaart in Beversluis">⇥ Naar de kaart</button>
+  <button id="herstart" class="herstart" onclick="opnieuw()" title="Wis de kroniek en begin opnieuw bij de smidse">⟲ Herstart</button>
+</div>
 <main id="app" aria-live="polite"></main>
 <nav class="riem" id="riem"></nav>
 
@@ -1479,6 +1482,24 @@ function render(){
 function naar(id){
   if(S.scene === "uitrusting_les" && id !== "uitrusting"){ S.weergave = id; render(); return; }
   S.weergave = id; bewaar(); render();
+}
+function springNaarKaart(){
+  if(!S.vlaggen.heeft_kaart){
+    S.gezegeld = true;
+    S.toenaam = S.toenaam || "Roodbaard";
+    S.eer = S.eer || 5;
+    S.munten = S.munten || 30;
+    if(!S.kist.includes("gevechtspak")) S.kist.push("gevechtspak");
+    if(!S.kist.includes("malienkolder")) S.kist.push("malienkolder","harnas_gerlof","zwaard");
+    if(!S.dracht.wapen) S.dracht.wapen = "zwaard";
+    S.vlaggen.heeft_kaart = true;
+    S.locatie = "beversluis";
+    schrijf("(ontwikkelaarssprong) direct naar de kaart in Beversluis, proloog overgeslagen.",2);
+  }
+  S.scene = "hoofdstuk1";
+  S.weergave = "kaart";
+  duel = null; reis = null;
+  bewaar(); render(); window.scrollTo({top:0});
 }
 function opnieuw(){
   let door = true;
