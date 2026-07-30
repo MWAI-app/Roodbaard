@@ -185,6 +185,23 @@ button{font:inherit;cursor:pointer}
   padding:.4rem .6rem;border-radius:2px;
 }
 .herstart:hover,.herstart:focus-visible{color:#f0dda9;border-color:var(--verguld)}
+
+/* Tussendoorscherm: een los briefje bovenop de kaart, voor een route- of onderweg-keuze */
+.overlay-achtergrond{
+  position:fixed;inset:0;z-index:15;
+  background:rgba(12,8,5,.62);
+  display:grid;place-items:center;
+  padding:1rem;
+}
+.overlay-blad{
+  max-width:26rem;width:100%;
+  background:var(--perkament);color:var(--inkt);
+  padding:1.1rem 1.15rem 1.3rem;
+  box-shadow:0 16px 36px rgba(0,0,0,.6);
+  clip-path:polygon(0.6% 0.8%, 99% 0%, 100% 99%, 1% 100%);
+  animation:leggen .3s ease-out both;
+  max-height:88vh;overflow-y:auto;
+}
 .fluister{font-family:var(--hand);color:var(--inkt-tweede);margin:.2rem 0 .5rem}
 .melding{max-width:var(--blad);margin:0 auto .8rem;color:#d9c393;font-size:.85rem;text-align:center}
 textarea,input[type=password]{width:100%;font:inherit;background:rgba(255,255,255,.5);border:1px solid var(--perkament-schaduw);color:var(--inkt);padding:.5rem}
@@ -1288,7 +1305,16 @@ function zegelSvg(nieuw){
 }
 
 function kaartSvg(){
-  const renze = S.vlaggen.heeft_kaart && PLAATSEN[S.locatie] ? PLAATSEN[S.locatie] : null;
+  let renze = null;
+  if(S.vlaggen.heeft_kaart){
+    if(reis && reis.fase === "onderweg"){
+      const van = PLAATSEN[reis.van], naar = PLAATSEN[reis.naar];
+      const t = Math.min(1, reis.etappe / (reis.route.etappes + 1));
+      renze = {x: van.x + (naar.x-van.x)*t, y: van.y + (naar.y-van.y)*t};
+    } else if(PLAATSEN[S.locatie]){
+      renze = PLAATSEN[S.locatie];
+    }
+  }
   return `<svg class="kaart" viewBox="0 0 320 220" role="img" aria-label="Vergeelde kaart van de omgeving">
     <defs>
       <filter id="oud"><feTurbulence type="fractalNoise" baseFrequency=".04" numOctaves="2" result="n"/>
@@ -1316,8 +1342,6 @@ function kaartSvg(){
 
 function toonKaart(){
   if(!S.vlaggen.heeft_kaart) return toonKaartOud();
-  if(reis && reis.fase === "route") return toonReisRoute();
-  if(reis && reis.fase === "onderweg") return toonReisOnderweg();
   return toonKaartReizen();
 }
 
@@ -1329,48 +1353,60 @@ function toonKaartOud(){
   return h + `</article>`;
 }
 
+/* De kaart is het hoofdscherm: positie groot, tekst/keuzes klein eronder.
+   Een route kiezen of een gebeurtenis tegenkomen opent een los tussendoorscherm. */
 function toonKaartReizen(){
   const hier = PLAATSEN[S.locatie];
   let h = `<article class="blad"><p class="kop">Je bevindt je in ${hier.naam}</p><h1>Kaart</h1>${kaartSvg()}`;
-  h += `<hr class="regel"><div class="keuzes">`;
-  for(const id in PLAATSEN){
-    if(id === S.locatie) continue;
-    const plaats = PLAATSEN[id];
-    const opties = ROUTES[routeKey(S.locatie, id)];
-    if(!opties){
-      h += `<button class="keuze" disabled style="opacity:.5;border-left-color:var(--perkament-schaduw)">${plaats.naam}<small>Nog geen route uitgestippeld hierheen.</small></button>`;
-    } else {
-      h += `<button class="keuze" onclick="reisKiezen('${id}')">Reis naar ${plaats.naam}<small>${opties.length} route${opties.length>1?"s":""} bekend.</small></button>`;
+
+  if(reis && reis.fase === "onderweg"){
+    h += `<p class="cijfers" style="margin-top:.6rem">Etappe ${reis.etappe} van ${reis.route.etappes} — onderweg naar ${PLAATSEN[reis.naar].naam}, ${reis.route.naam.toLowerCase()}.</p>`;
+    if(!reis.gebeurtenis){
+      h += `<p style="margin:.3rem 0 0">${reis.uitkomst}</p>
+        <p style="margin-top:.6rem"><button class="knop" onclick="reisVerder()">Rijd verder</button></p>`;
     }
+  } else {
+    h += `<hr class="regel"><div class="keuzes">`;
+    for(const id in PLAATSEN){
+      if(id === S.locatie) continue;
+      const plaats = PLAATSEN[id];
+      const opties = ROUTES[routeKey(S.locatie, id)];
+      if(!opties){
+        h += `<button class="keuze" disabled style="opacity:.5;border-left-color:var(--perkament-schaduw)">${plaats.naam}<small>Nog geen route uitgestippeld hierheen.</small></button>`;
+      } else {
+        h += `<button class="keuze" onclick="reisKiezen('${id}')">Reis naar ${plaats.naam}<small>${opties.length} route${opties.length>1?"s":""} bekend.</small></button>`;
+      }
+    }
+    h += `</div>`;
   }
-  h += `</div></article>`;
+  h += `</article>`;
+
+  if(reis && reis.fase === "route") h += tussendoorRoute();
+  if(reis && reis.fase === "onderweg" && reis.gebeurtenis) h += tussendoorGebeurtenis();
   return h;
 }
 
-function toonReisRoute(){
+function tussendoorRoute(){
   const naar = PLAATSEN[reis.naar];
   const opties = ROUTES[routeKey(S.locatie, reis.naar)] || [];
-  let h = `<article class="blad"><p class="kop">Op weg naar ${naar.naam}</p><h1>Kies een route</h1>${kaartSvg()}`;
-  h += `<hr class="regel"><div class="keuzes">` + opties.map(r=>
-    `<button class="keuze" onclick="reisStart('${r.id}')">${r.naam}<small>${r.omschrijving}</small></button>`
-  ).join("") + `</div>`;
-  h += `<p style="margin-top:.8rem"><button class="knop knop--stil" onclick="reisAnnuleren()">Toch niet.</button></p>`;
-  return h + `</article>`;
+  return `<div class="overlay-achtergrond"><div class="overlay-blad">
+    <p class="kop">Op weg naar ${naar.naam}</p><h1>Kies een route</h1>
+    <div class="keuzes">` + opties.map(r=>
+      `<button class="keuze" onclick="reisStart('${r.id}')">${r.naam}<small>${r.omschrijving}</small></button>`
+    ).join("") + `</div>
+    <p style="margin-top:.8rem"><button class="knop knop--stil" onclick="reisAnnuleren()">Toch niet.</button></p>
+  </div></div>`;
 }
 
-function toonReisOnderweg(){
-  let h = `<article class="blad"><p class="kop">Onderweg naar ${PLAATSEN[reis.naar].naam} — ${reis.route.naam}</p>
-    <h1>Etappe ${reis.etappe} van ${reis.route.etappes}</h1>`;
-  if(reis.gebeurtenis){
-    h += `<p class="label">${reis.gebeurtenis.type}</p><p>${reis.gebeurtenis.tekst}</p>
-      <hr class="regel"><div class="keuzes">
-        <button class="keuze" onclick="reisNegeren()">Negeren. Doorrijden.<small>Wat het ook is, je laat het achter je.</small></button>
-        <button class="keuze" onclick="reisStilstaanDoen()">Stilstaan. Iets doen.<small>Je stapt af om te kijken wat het is.</small></button>
-      </div>`;
-  } else {
-    h += `<p>${reis.uitkomst}</p><hr class="regel"><button class="knop" onclick="reisVerder()">Rijd verder</button>`;
-  }
-  return h + `</article>`;
+function tussendoorGebeurtenis(){
+  const g = reis.gebeurtenis;
+  return `<div class="overlay-achtergrond"><div class="overlay-blad">
+    <p class="label">${g.type}</p><p>${g.tekst}</p>
+    <div class="keuzes" style="margin-top:.6rem">
+      <button class="keuze" onclick="reisNegeren()">Negeren. Doorrijden.<small>Wat het ook is, je laat het achter je.</small></button>
+      <button class="keuze" onclick="reisStilstaanDoen()">Stilstaan. Iets doen.<small>Je stapt af om te kijken wat het is.</small></button>
+    </div>
+  </div></div>`;
 }
 
 function toonVel(){
