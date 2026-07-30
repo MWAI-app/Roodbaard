@@ -176,6 +176,15 @@ button{font:inherit;cursor:pointer}
 }
 .riem button[aria-current="true"]{color:#f0dda9;border-bottom-color:var(--verguld)}
 .riem svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.5}
+
+/* Ontwikkelknop: snel de kroniek wissen om plaatjes te controleren */
+.herstart{
+  position:fixed;top:.5rem;right:.5rem;z-index:20;
+  background:rgba(34,24,18,.88);color:#d9c393;border:1px solid var(--leer-naad);
+  font-family:var(--kapitaal);font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;
+  padding:.4rem .6rem;border-radius:2px;
+}
+.herstart:hover,.herstart:focus-visible{color:#f0dda9;border-color:var(--verguld)}
 .fluister{font-family:var(--hand);color:var(--inkt-tweede);margin:.2rem 0 .5rem}
 .melding{max-width:var(--blad);margin:0 auto .8rem;color:#d9c393;font-size:.85rem;text-align:center}
 textarea,input[type=password]{width:100%;font:inherit;background:rgba(255,255,255,.5);border:1px solid var(--perkament-schaduw);color:var(--inkt);padding:.5rem}
@@ -183,6 +192,7 @@ textarea,input[type=password]{width:100%;font:inherit;background:rgba(255,255,25
 </style>
 </head>
 <body>
+<button id="herstart" class="herstart" onclick="opnieuw()" title="Wis de kroniek en begin opnieuw bij de smidse">⟲ Herstart</button>
 <main id="app" aria-live="polite"></main>
 <nav class="riem" id="riem"></nav>
 
@@ -1259,7 +1269,10 @@ function naar(id){
   S.weergave = id; bewaar(); render();
 }
 function opnieuw(){
-  if(!confirm("De hele kroniek wissen en opnieuw beginnen?")) return;
+  let door = true;
+  try { door = confirm("De hele kroniek wissen en opnieuw beginnen?"); }
+  catch(e){ door = true; } // sommige voorvertoningen (sandboxed iframes) staan confirm() niet toe
+  if(!door) return;
   OPSLAG.wis(); S = nieuweStaat(); duel = null; bewaar(); render(); window.scrollTo({top:0});
 }
 
