@@ -106,6 +106,7 @@ button{font:inherit;cursor:pointer}
 .keuze:hover,.keuze:focus-visible{background:rgba(125,31,26,.09)}
 .keuze:active{transform:translateY(1px)}
 .keuze small{display:block;color:var(--inkt-bleek);font-size:.82rem;line-height:1.35}
+.keuze small.kenmerken{margin-top:.25rem;font-style:italic;opacity:.75;font-size:.74rem}
 .knop{
   background:var(--zegel);color:#f2e6c8;border:1px solid #521310;
   padding:.6rem 1.05rem;font-family:var(--kapitaal);
@@ -153,11 +154,20 @@ button{font:inherit;cursor:pointer}
 
 /* ---------- Kaart ---------- */
 .kaart{width:100%;height:auto;display:block}
-.kaart .pad{stroke:var(--inkt);stroke-width:1.6;fill:none;stroke-dasharray:400;stroke-dashoffset:0;animation:trekken 1.6s ease-out both}
-@keyframes trekken{from{stroke-dashoffset:400}to{stroke-dashoffset:0}}
-@media (prefers-reduced-motion:reduce){.kaart .pad{animation:none}}
-.kaart text{font-family:var(--kapitaal);font-size:9px;fill:var(--inkt);letter-spacing:.08em}
+.kaart text{font-family:var(--kapitaal);font-size:26px;fill:var(--inkt);letter-spacing:.08em}
 .kaart .mist{fill:var(--perkament-diep);opacity:.94}
+.plattegrond{width:100%;height:auto;display:block;margin:.7rem 0 0;border:1px solid var(--perkament-schaduw)}
+.kaart-wrap{position:relative}
+.hotspot{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:.2rem;background:none;border:0;padding:.3rem;margin:0;cursor:pointer;text-align:center}
+.hotspot .merk{width:1.7rem;height:1.7rem;border-radius:50%;border:2px solid #7d1f1a;background:rgba(242,230,200,.6);display:grid;place-items:center;box-shadow:0 1px 3px rgba(0,0,0,.4);transition:transform .15s,background .15s}
+.hotspot .merk svg{width:62%;height:62%}
+.hotspot .merk svg path{stroke:#7d1f1a;stroke-width:2.6;stroke-linecap:round}
+.hotspot .label{font-family:var(--kapitaal);font-size:.62rem;letter-spacing:.05em;text-transform:uppercase;color:var(--inkt);background:rgba(242,230,200,.88);padding:.1rem .4rem;white-space:nowrap;border:1px solid var(--perkament-schaduw)}
+.hotspot:hover .merk,.hotspot:focus-visible .merk{background:rgba(125,31,26,.2);transform:scale(1.14)}
+.hotspot--dicht{cursor:default}
+.hotspot--dicht .merk{opacity:.5;border-style:dashed}
+.hotspot--dicht .label{opacity:.6}
+.kaart-wenk{margin:.55rem 0 0;font-size:.82rem;color:var(--inkt-bleek)}
 
 /* ---------- Onderriem ---------- */
 .riem{
@@ -249,6 +259,8 @@ const OPSLAG = (() => {
    2. ASSETS — vaste paden; ontbreekt het bestand, dan verschijnt de ets
    --------------------------------------------------------------------- */
 const ASSETS = {
+  landkaart:   "assets/kaarten/landkaart.webp",
+  beversluis_plattegrond: "assets/kaarten/beversluis-plattegrond.webp",
   smidse:      "assets/scene/smidse.webp",
   vier_eiken:  "assets/scene/vier-eiken.webp",
   duel:        "assets/scene/duel.webp",
@@ -760,16 +772,9 @@ function gevangenNemen(soort){
    5c. DE KAART EN DE WEG — zelf reizen, routes kiezen, iets tegenkomen
    --------------------------------------------------------------------- */
 const PLAATSEN = {
-  hooiveld:   {naam:"Hooiveld",   x:52,  y:176},
-  vier_eiken: {naam:"Vier Eiken", x:182, y:120},
-  beversluis: {naam:"Beversluis", x:286, y:112}
-};
-
-const ROUTES = {
-  "beversluis|vier_eiken": [
-    {id:"brede_weg", naam:"De brede weg", omschrijving:"Langs de akkers en de Zwarte Ley. Langzamer, maar je ziet ver.", etappes:3, risico:.3},
-    {id:"weelbos",   naam:"Door het Weelbos", omschrijving:"Sneller, dwars door het bos. Je weet nooit wie er meeloopt.", etappes:2, risico:.6}
-  ]
+  hooiveld:   {naam:"Hooiveld",   x:195,  y:715},
+  vier_eiken: {naam:"Vier Eiken", x:705,  y:490},
+  beversluis: {naam:"Beversluis", x:1275, y:385}
 };
 
 function routeKey(a,b){ return [a,b].sort().join("|"); }
@@ -784,62 +789,198 @@ function reisWerfOnderweg(){
   return naam;
 }
 
-const REISGEBEURTENISSEN = [
-  {
-    type:"Je hoort",
-    tekst:"een tak die breekt, ergens rechts van het pad. Te dichtbij voor een ree.",
-    negerenTekst:"Je haalt de teugels aan en rijdt door. Wat het ook was, het blijft achter je.",
-    stilstaan(){
-      if(Math.random() < .5) return "Je wacht met je hand aan het gevest. Na een tel stapt een ree het pad op, schrikt van je, en is weg tussen de struiken.";
-      const verlies = Math.min(S.munten, 3 + Math.floor(Math.random()*6));
-      S.munten -= verlies;
-      return verlies > 0
-        ? `Een hand grist naar je zadeltas voor je hem ziet. Tegen de tijd dat je je zwaard hebt, is er alleen struikgewas. Je bent ${verlies} penningen kwijt.`
-        : "Een hand grist naar je zadeltas, maar vindt niets. Tegen de tijd dat je je zwaard hebt, is er alleen struikgewas.";
-    }
-  },
-  {
-    type:"Je ziet",
-    tekst:"een man langs de weg zitten, met een half kapotte laars, die opkijkt zodra je paard nadert.",
-    negerenTekst:"Je knikt kort en rijdt door. Hij kijkt je na tot de bocht.",
-    stilstaan(){
-      const naam = reisWerfOnderweg();
-      return naam
-        ? `«Ik kan lopen, en ik kan een mes vasthouden,» zegt hij. «Ik heb alleen niemand om voor te lopen.» ${naam} sluit zich bij je aan.`
-        : "«Ik red me wel,» zegt hij, voor je iets kunt vragen. Hij is alweer aan het lopen voor je van je paard bent.";
-    }
-  },
-  {
-    type:"Je ziet",
-    tekst:"rook, dun en recht omhoog, net boven de bomen links van het pad.",
-    negerenTekst:"Rook is niet altijd jouw zaak. Je rijdt door.",
-    stilstaan(){
-      const vondst = 4 + Math.floor(Math.random()*8);
-      S.munten += vondst;
-      S.eer = Math.max(0, S.eer-1);
-      return `Een handelskar, uitgebrand, één wiel nog na-smeulend. Wie hier ook was, is al lang weg. Tussen de as vind je ${vondst} penningen die de hitte niet deerde. Je voelt je er niet goed bij, en je neemt ze toch mee.`;
-    }
-  },
-  {
-    type:"Een aanwijzing",
-    tekst:"bij de wegwijzer staan verse hoefafdrukken. Meerdere paarden, allemaal dezelfde kant op.",
-    negerenTekst:"Sporen zijn er altijd. Je rijdt door.",
-    stilstaan(){
-      const vondst = 2 + Math.floor(Math.random()*5);
-      S.munten += vondst;
-      return `Je volgt de sporen een klein eind het gras in en vindt een buidel die iemand niet miste tot het te laat was — ${vondst} penningen. De sporen zelf lopen door, verder dan jij nu wilt gaan.`;
-    }
-  },
-  {
-    type:"Je hoort",
-    tekst:"gezang, ver weg, ergens achter je op hetzelfde pad.",
-    negerenTekst:"Je laat hem achter je. Het gezang wordt zachter en verdwijnt.",
-    stilstaan(){
-      fluister("Een marskramer zong over een ridder met een rode baard die alleen reisde en niemand nodig had.",1);
-      return "Een marskramer haalt je in, zingend, en loopt een tijd naast je paard. Hij vertelt meer dan hij weet en weet meer dan hij vertelt. Dan slaat hij een zijpad in, en is weg.";
-    }
+/* Gebeurtenissen zijn per route toegekend — elk pad op de kaart heeft zijn
+   eigen aard en dus zijn eigen risico's, niet één gedeelde pot. */
+const GEB_TAK_BREEKT = {
+  type:"Je hoort",
+  tekst:"een tak die breekt, ergens rechts van het pad. Te dichtbij voor een ree.",
+  negerenTekst:"Je haalt de teugels aan en rijdt door. Wat het ook was, het blijft achter je.",
+  stilstaan(){
+    if(Math.random() < .5) return "Je wacht met je hand aan het gevest. Na een tel stapt een ree het pad op, schrikt van je, en is weg tussen de struiken.";
+    const verlies = Math.min(S.munten, 3 + Math.floor(Math.random()*6));
+    S.munten -= verlies;
+    return verlies > 0
+      ? `Een hand grist naar je zadeltas voor je hem ziet. Tegen de tijd dat je je zwaard hebt, is er alleen struikgewas. Je bent ${verlies} penningen kwijt.`
+      : "Een hand grist naar je zadeltas, maar vindt niets. Tegen de tijd dat je je zwaard hebt, is er alleen struikgewas.";
   }
-];
+};
+
+const GEB_BEDELAAR = {
+  type:"Je ziet",
+  tekst:"een man langs de weg zitten, met een half kapotte laars, die opkijkt zodra je paard nadert.",
+  negerenTekst:"Je knikt kort en rijdt door. Hij kijkt je na tot de bocht.",
+  stilstaan(){
+    const naam = reisWerfOnderweg();
+    return naam
+      ? `«Ik kan lopen, en ik kan een mes vasthouden,» zegt hij. «Ik heb alleen niemand om voor te lopen.» ${naam} sluit zich bij je aan.`
+      : "«Ik red me wel,» zegt hij, voor je iets kunt vragen. Hij is alweer aan het lopen voor je van je paard bent.";
+  }
+};
+
+const GEB_UITGEBRANDE_KAR = {
+  type:"Je ziet",
+  tekst:"rook, dun en recht omhoog, net boven de bomen links van het pad.",
+  negerenTekst:"Rook is niet altijd jouw zaak. Je rijdt door.",
+  stilstaan(){
+    const vondst = 4 + Math.floor(Math.random()*8);
+    S.munten += vondst;
+    S.eer = Math.max(0, S.eer-1);
+    return `Een handelskar, uitgebrand, één wiel nog na-smeulend. Wie hier ook was, is al lang weg. Tussen de as vind je ${vondst} penningen die de hitte niet deerde. Je voelt je er niet goed bij, en je neemt ze toch mee.`;
+  }
+};
+
+const GEB_HOEFAFDRUKKEN = {
+  type:"Een aanwijzing",
+  tekst:"bij de wegwijzer staan verse hoefafdrukken. Meerdere paarden, allemaal dezelfde kant op.",
+  negerenTekst:"Sporen zijn er altijd. Je rijdt door.",
+  stilstaan(){
+    const vondst = 2 + Math.floor(Math.random()*5);
+    S.munten += vondst;
+    return `Je volgt de sporen een klein eind het gras in en vindt een buidel die iemand niet miste tot het te laat was — ${vondst} penningen. De sporen zelf lopen door, verder dan jij nu wilt gaan.`;
+  }
+};
+
+const GEB_MARSKRAMER = {
+  type:"Je hoort",
+  tekst:"gezang, ver weg, ergens achter je op hetzelfde pad.",
+  negerenTekst:"Je laat hem achter je. Het gezang wordt zachter en verdwijnt.",
+  stilstaan(){
+    fluister("Een marskramer zong over een ridder met een rode baard die alleen reisde en niemand nodig had.",1);
+    return "Een marskramer haalt je in, zingend, en loopt een tijd naast je paard. Hij vertelt meer dan hij weet en weet meer dan hij vertelt. Dan slaat hij een zijpad in, en is weg.";
+  }
+};
+
+const GEB_JAGER = {
+  type:"Je ziet",
+  tekst:"een man bij de jagershut, een haas aan zijn gordel, die je zwijgend opneemt zodra je tussen de bomen verschijnt.",
+  negerenTekst:"Je knikt en loopt door. Hij knikt terug, en kijkt je na tot het bos je opslokt.",
+  stilstaan(){
+    if(Math.random() < .5){
+      fluister("De jager van het Weelbos praat met niemand die niet eerst zijn hut respecteert.",1);
+      return "«Het bos is niet van de koning, wat de kanselier ook zegt,» zegt hij, en meer niet. Hij wijst je een kortere doorsteek, stil, en is weer weg tussen de bomen.";
+    }
+    S.eer = Math.max(0, S.eer-1);
+    return "«Ridders in mijn bos jagen mijn wild weg,» zegt hij, en spreekt geen woord meer. Hij kijkt je na tot je uit het zicht bent, en het voelt of hij nog langer kijkt dan dat.";
+  }
+};
+
+/* Het galgenpad: een amper begaanbaar spoor voorbij de galgenboom. Wie hier
+   afstapt terwijl hij — of een metgezel — al gewond is, wordt door de raven
+   opgemerkt. Eenmaal aangevallen weigert het paard dit pad voorgoed. */
+const GEB_RAVEN = {
+  type:"Je paard",
+  tekst:"strompelt op de amper begaanbare grond en wil op een gegeven moment geen stap meer verzetten. Boven de galgenboom cirkelen raven, stil.",
+  negeerLabel:"Dwing het paard door.",
+  negeerSubtekst:"Je blijft in het zadel en zet hem met hand en hiel voort.",
+  negerenTekst:"Je dwingt het dier met hand en hiel voort. Het bokt en schuimbekt, maar onder je blijft het een dier onder je, niet naast je. De raven cirkelen, en verliezen hun belangstelling voor een man die niet afstijgt.",
+  stilstaanLabel:"Afstappen. Het paard leiden.",
+  stilstaanSubtekst:"Je glijdt uit het zadel en leidt hem aan de teugel, te voet voorbij de galgenboom.",
+  stilstaan(){
+    const gewond = S.vlaggen.gewond || S.manschappen.some(m=>m.gewond);
+    if(!gewond){
+      return "Je leidt het paard aan een korte teugel voorbij de kale boom, te voet, de raven roerloos boven je. Ze zien een gezonde man en een gezond dier, en verliezen hun belangstelling zodra de grond weer vast wordt.";
+    }
+    const verlies = Math.min(S.munten, 4 + Math.floor(Math.random()*7));
+    S.munten -= verlies;
+    S.vlaggen.gewond = true;
+    S.vlaggen.paard_schuwt_galgenpad = true;
+    return `Te voet ben je, onder de galgenboom, niet meer dan iets dat bloedt of nog gaat bloeden, en de raven kennen het verschil niet. Ze duiken, laag en doelgericht, tot je struikelend voorbij de boom bent${verlies>0?`, ${verlies} penningen kwijt uit een tas die openscheurt in het gefladder,`:","} tot bloedens toe gepikt. Het paard onthoudt het. Wat je ook probeert, hierna zet het geen hoef meer op dit pad.`;
+  }
+};
+
+const GEB_DRASSIGE_OVERSTEEK = {
+  type:"De grond",
+  tekst:"verandert in zwarte modder. Het pad verdwijnt onder rietpluimen en drijfnat gras — de drassige oversteek.",
+  negerenTekst:"Je zoekt de hardste grond op eigen gok en komt er, drijfnat tot de knie, doorheen.",
+  stilstaan(){
+    if(Math.random() < .5){
+      return "Je stapt af en beproeft de grond met de schede van je zwaard voor je een voet zet. Traag, maar droog, kom je erdoor.";
+    }
+    S.eer = Math.max(0, S.eer-1);
+    return "Het paard zakt tot de borst weg en je moet hem er zelf uit trekken, vloekend, tot je kleren zwart zijn van de modder. Niemand die het ziet, maar het voelt alsof iedereen het zag.";
+  }
+};
+
+const GEB_WACHTPOST = {
+  type:"Je ziet",
+  tekst:"de oude wachtpost, een verweerde houten toren op palen, half ingestort. Er brandt geen licht, maar de ladder hangt neer.",
+  negerenTekst:"Een verlaten wachtpost is niemands zaak. Je laat hem achter je.",
+  stilstaan(){
+    if(Math.random() < .45){
+      const vondst = 3 + Math.floor(Math.random()*6);
+      S.munten += vondst;
+      return `Boven, tussen kapotte planken, vind je een vergeten proviandkist — ${vondst} penningen aan ruilwaar en een half brood dat de muizen nog niet hadden. Iemand hield hier ooit de weg in de gaten.`;
+    }
+    const verlies = Math.min(S.munten, 2 + Math.floor(Math.random()*4));
+    S.munten -= verlies;
+    return `De ladder breekt onder je op de derde sport. Je valt niet hoog, maar hard genoeg om je buidel te scheuren — ${verlies} penningen tussen het gras kwijt die je niet meer terugvindt.`;
+  }
+};
+
+const GEB_RIETVELD = {
+  type:"Je hoort",
+  tekst:"reiger na reiger opschrikken in het riet van het rieland, alsof iets voor je door het water beweegt.",
+  negerenTekst:"Vogels schrikken om minder dan een mens. Je rijdt door.",
+  stilstaan(){
+    if(Math.random() < .5){
+      return "Je wacht. Niets komt. Alleen de laatste reiger, laat en klagend, klapwiekt de lucht in.";
+    }
+    const verlies = Math.min(S.munten, 2 + Math.floor(Math.random()*5));
+    S.munten -= verlies;
+    return verlies > 0
+      ? `Bloedzuigers, niet een dief. Tegen de tijd dat je ze van je kuiten peutert, ben je ${verlies} penningen kwijt aan wat het water meenam uit je zadeltas.`
+      : "Bloedzuigers, niet een dief. Vervelend, maar je zadeltas is dicht gebleven.";
+  }
+};
+
+const GEB_GALGENBOOM_VERTE = {
+  type:"Je ziet",
+  tekst:"in de verte, waar het rieland overgaat in vaste grond, een kale boom met iets dat zwaait dat geen tak is. Raven, stil, in de takken.",
+  negerenTekst:"Je kijkt niet nog eens. De weg buigt toch al van de boom vandaan.",
+  stilstaan(){
+    return "Je blijft op afstand. Wat er ook aan die boom hangt, het is niet jouw zaak vandaag — en de raven hebben geen haast om dat te veranderen.";
+  }
+};
+
+const ROUTES = {
+  "hooiveld|vier_eiken": [
+    {
+      id:"hoofdweg_akkers", naam:"De hoofdweg", etappes:2, risico:.2,
+      omschrijving:"Een brede, vaste weg langs de akkers, voorbij de wegkapel. Karren en boeren delen hem met je.",
+      kenmerken:["Veilig","Vlak boerenland","Veel volk onderweg"],
+      gebeurtenissen:[GEB_HOEFAFDRUKKEN, GEB_BEDELAAR, GEB_MARSKRAMER]
+    }
+  ],
+  "beversluis|vier_eiken": [
+    {
+      id:"brede_weg", naam:"De brede weg", etappes:3, risico:.3,
+      omschrijving:"Langs de akkers en de Zwarte Ley. Langzamer, maar je ziet ver.",
+      kenmerken:["Veilig","Langs de Zwarte Ley","Trage karavanen"],
+      gebeurtenissen:[GEB_UITGEBRANDE_KAR, GEB_HOEFAFDRUKKEN, GEB_MARSKRAMER]
+    },
+    {
+      id:"weelbos", naam:"Door het Weelbos", etappes:2, risico:.6,
+      omschrijving:"Sneller, dwars door het bos, voorbij de jagershut. Je weet nooit wie er meeloopt.",
+      kenmerken:["Snel","Dicht geboomte","Onvoorspelbaar volk"],
+      gebeurtenissen:[GEB_TAK_BREEKT, GEB_JAGER, GEB_UITGEBRANDE_KAR]
+    },
+    {
+      id:"galgenpad", naam:"Langs de galgenboom", etappes:2, risico:.65,
+      omschrijving:"Voorbij de drassige oversteek en de galgenboom, dan de oude wachtpost langs. Amper een pad.",
+      kenmerken:["Zeer riskant","Modderig, amper begaanbaar","Raven boven de galgenboom"],
+      vergrendeld(){ return S.vlaggen.paard_schuwt_galgenpad ? "Je paard weigert dit pad nog eens te nemen. Wat je ook probeert." : null; },
+      gebeurtenissen:[GEB_RAVEN, GEB_DRASSIGE_OVERSTEEK, GEB_WACHTPOST]
+    }
+  ],
+  "beversluis|hooiveld": [
+    {
+      id:"rieland", naam:"Langs het rieland", etappes:3, risico:.5,
+      omschrijving:"Om Vier Eiken heen, door het rieland, tot de galgenboom en de wachtpost. Een omweg zonder dorpen.",
+      kenmerken:["Riskant","Drassig rieland","Geen dorpen onderweg"],
+      gebeurtenissen:[GEB_RIETVELD, GEB_WACHTPOST, GEB_GALGENBOOM_VERTE]
+    }
+  ]
+};
 
 let reis = null;
 
@@ -856,7 +997,7 @@ function reisAnnuleren(){
 function reisStart(routeId){
   const opties = ROUTES[routeKey(S.locatie, reis.naar)] || [];
   const route = opties.find(r=>r.id===routeId);
-  if(!route) return;
+  if(!route || (route.vergrendeld && route.vergrendeld())) return;
   reis = {fase:"onderweg", route, van:S.locatie, naar:reis.naar, etappe:0, gebeurtenis:null, uitkomst:null};
   reisEtappe();
 }
@@ -872,8 +1013,9 @@ function reisEtappe(){
     bewaar(); render();
     return;
   }
+  const pot = reis.route.gebeurtenissen;
   reis.gebeurtenis = Math.random() < reis.route.risico
-    ? REISGEBEURTENISSEN[Math.floor(Math.random()*REISGEBEURTENISSEN.length)]
+    ? pot[Math.floor(Math.random()*pot.length)]
     : null;
   if(!reis.gebeurtenis) reis.uitkomst = "De weg is hier stil. Niets bijzonders.";
   bewaar(); render();
@@ -1315,28 +1457,11 @@ function kaartSvg(){
       renze = PLAATSEN[S.locatie];
     }
   }
-  return `<svg class="kaart" viewBox="0 0 320 220" role="img" aria-label="Vergeelde kaart van de omgeving">
-    <defs>
-      <filter id="oud"><feTurbulence type="fractalNoise" baseFrequency=".04" numOctaves="2" result="n"/>
-        <feDisplacementMap in="SourceGraphic" in2="n" scale="2.4"/></filter>
-    </defs>
-    <rect width="320" height="220" fill="#d8c493"/>
-    <g filter="url(#oud)">
-      <path class="pad" d="M0 150c40-6 60-26 96-24s52 18 84 12 60-30 96-24" stroke-width="2.6" opacity=".7"/>
-      <path class="pad" d="M52 176c26-18 44-16 64-30s40-30 66-26 44 22 74 16" stroke-dasharray="6 5"/>
-      <path d="M18 60c30 10 44-8 70 0s34 26 62 20 46-22 74-14" stroke="#3d5d4a" stroke-width="1.2" fill="none" opacity=".6"/>
-      <g stroke="#241a10" fill="none" stroke-width="1.1" opacity=".75">
-        <path d="M120 44c4-6 10-6 14 0M136 40c4-6 10-6 14 0M112 52c4-6 10-6 14 0"/>
-      </g>
-      <circle cx="52" cy="176" r="4" fill="#241a10"/><text x="60" y="180">HOOIVELD</text>
-      <circle cx="182" cy="120" r="4" fill="#241a10"/><text x="190" y="116">VIER EIKEN</text>
-      <circle cx="286" cy="112" r="5" fill="#7d1f1a"/><text x="240" y="102">BEVERSLUIS</text>
-      <text x="150" y="66" opacity=".8">WEELBOS</text>
-      <text x="24" y="56" opacity=".8">de Zwarte Ley</text>
-    </g>
-    ${S.gezegeld ? "" : `<rect class="mist" x="212" y="76" width="108" height="70"/>`}
-    ${renze ? `<circle cx="${renze.x}" cy="${renze.y}" r="7" fill="none" stroke="#7d1f1a" stroke-width="1.6"><animate attributeName="r" values="6;8;6" dur="2s" repeatCount="indefinite"/></circle>` : ""}
-    <text x="8" y="212" opacity=".6">Getekend voor de schout, jaar van de late oogst</text>
+  return `<svg class="kaart" viewBox="0 0 1448 1086" role="img" aria-label="Landkaart van de omgeving van Beversluis">
+    <image href="${ASSETS.landkaart}" x="0" y="0" width="1448" height="1086" preserveAspectRatio="xMidYMid slice"/>
+    ${S.gezegeld ? "" : `<rect class="mist" x="1140" y="230" width="308" height="300"/>`}
+    ${renze ? `<circle cx="${renze.x}" cy="${renze.y}" r="16" fill="none" stroke="#7d1f1a" stroke-width="3.5"><animate attributeName="r" values="14;19;14" dur="2s" repeatCount="indefinite"/></circle>` : ""}
+    <text x="24" y="1058" opacity=".7">Getekend voor de schout, jaar van de late oogst</text>
   </svg>`;
 }
 
@@ -1355,9 +1480,33 @@ function toonKaartOud(){
 
 /* De kaart is het hoofdscherm: positie groot, tekst/keuzes klein eronder.
    Een route kiezen of een gebeurtenis tegenkomen opent een los tussendoorscherm. */
+function kaartHotspots(){
+  let h = "";
+  for(const id in PLAATSEN){
+    if(id === S.locatie) continue;
+    const plaats = PLAATSEN[id];
+    const links = plaats.x/1448*100, top = plaats.y/1086*100;
+    const opties = ROUTES[routeKey(S.locatie, id)];
+    const kruisje = `<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>`;
+    if(!opties){
+      h += `<button class="hotspot hotspot--dicht" type="button" disabled
+        style="left:${links}%;top:${top}%" title="Nog geen route uitgestippeld naar ${plaats.naam}.">
+        <span class="merk">${kruisje}</span><span class="label">${plaats.naam}</span>
+      </button>`;
+    } else {
+      h += `<button class="hotspot" type="button" onclick="reisKiezen('${id}')"
+        style="left:${links}%;top:${top}%" title="Reis naar ${plaats.naam} — ${opties.length} route${opties.length>1?"s":""} bekend.">
+        <span class="merk">${kruisje}</span><span class="label">${plaats.naam}</span>
+      </button>`;
+    }
+  }
+  return h;
+}
+
 function toonKaartReizen(){
   const hier = PLAATSEN[S.locatie];
-  let h = `<article class="blad"><p class="kop">Je bevindt je in ${hier.naam}</p><h1>Kaart</h1>${kaartSvg()}`;
+  let h = `<article class="blad"><p class="kop">Je bevindt je in ${hier.naam}</p><h1>Kaart</h1>
+    <div class="kaart-wrap">${kaartSvg()}${(!reis || reis.fase !== "onderweg") ? kaartHotspots() : ""}</div>`;
 
   if(reis && reis.fase === "onderweg"){
     h += `<p class="cijfers" style="margin-top:.6rem">Etappe ${reis.etappe} van ${reis.route.etappes} — onderweg naar ${PLAATSEN[reis.naar].naam}, ${reis.route.naam.toLowerCase()}.</p>`;
@@ -1366,18 +1515,10 @@ function toonKaartReizen(){
         <p style="margin-top:.6rem"><button class="knop" onclick="reisVerder()">Rijd verder</button></p>`;
     }
   } else {
-    h += `<hr class="regel"><div class="keuzes">`;
-    for(const id in PLAATSEN){
-      if(id === S.locatie) continue;
-      const plaats = PLAATSEN[id];
-      const opties = ROUTES[routeKey(S.locatie, id)];
-      if(!opties){
-        h += `<button class="keuze" disabled style="opacity:.5;border-left-color:var(--perkament-schaduw)">${plaats.naam}<small>Nog geen route uitgestippeld hierheen.</small></button>`;
-      } else {
-        h += `<button class="keuze" onclick="reisKiezen('${id}')">Reis naar ${plaats.naam}<small>${opties.length} route${opties.length>1?"s":""} bekend.</small></button>`;
-      }
+    h += `<p class="kaart-wenk">Klik op een plek op de kaart om ernaartoe te reizen.</p>`;
+    if(S.locatie === "beversluis"){
+      h += `<img class="plattegrond" src="${ASSETS.beversluis_plattegrond}" alt="Plattegrond van Beversluis" onerror="this.remove()">`;
     }
-    h += `</div>`;
   }
   h += `</article>`;
 
@@ -1391,9 +1532,15 @@ function tussendoorRoute(){
   const opties = ROUTES[routeKey(S.locatie, reis.naar)] || [];
   return `<div class="overlay-achtergrond"><div class="overlay-blad">
     <p class="kop">Op weg naar ${naar.naam}</p><h1>Kies een route</h1>
-    <div class="keuzes">` + opties.map(r=>
-      `<button class="keuze" onclick="reisStart('${r.id}')">${r.naam}<small>${r.omschrijving}</small></button>`
-    ).join("") + `</div>
+    <div class="keuzes">` + opties.map(r=>{
+      const blokkade = r.vergrendeld && r.vergrendeld();
+      if(blokkade){
+        return `<button class="keuze" disabled style="opacity:.5;border-left-color:var(--perkament-schaduw)">${r.naam}<small>${blokkade}</small></button>`;
+      }
+      return `<button class="keuze" onclick="reisStart('${r.id}')">${r.naam}
+        <small>${r.omschrijving}</small>
+        <small class="kenmerken">${r.kenmerken.join(" · ")}</small></button>`;
+    }).join("") + `</div>
     <p style="margin-top:.8rem"><button class="knop knop--stil" onclick="reisAnnuleren()">Toch niet.</button></p>
   </div></div>`;
 }
@@ -1403,8 +1550,8 @@ function tussendoorGebeurtenis(){
   return `<div class="overlay-achtergrond"><div class="overlay-blad">
     <p class="label">${g.type}</p><p>${g.tekst}</p>
     <div class="keuzes" style="margin-top:.6rem">
-      <button class="keuze" onclick="reisNegeren()">Negeren. Doorrijden.<small>Wat het ook is, je laat het achter je.</small></button>
-      <button class="keuze" onclick="reisStilstaanDoen()">Stilstaan. Iets doen.<small>Je stapt af om te kijken wat het is.</small></button>
+      <button class="keuze" onclick="reisNegeren()">${g.negeerLabel || "Negeren. Doorrijden."}<small>${g.negeerSubtekst || "Wat het ook is, je laat het achter je."}</small></button>
+      <button class="keuze" onclick="reisStilstaanDoen()">${g.stilstaanLabel || "Stilstaan. Iets doen."}<small>${g.stilstaanSubtekst || "Je stapt af om te kijken wat het is."}</small></button>
     </div>
   </div></div>`;
 }
