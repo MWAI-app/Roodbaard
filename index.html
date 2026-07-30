@@ -362,7 +362,7 @@ function legerkracht(){
 /* ---------------------------------------------------------------------
    4. SPELSTAAT + migratie
    --------------------------------------------------------------------- */
-const VERSIE = 2;
+const VERSIE = 3;
 
 function nieuweStaat(){
   return {
@@ -375,6 +375,7 @@ function nieuweStaat(){
     eer: 0,
     gerucht: 0,
     gezocht: 0,
+    locatie: null,
     fluisters: [],
     vlaggen: {},
     dracht: {onder:"linnen_hemd", midden:"gelapt_wambuis", harnas:null, wapen:null},
@@ -392,6 +393,7 @@ function nieuweStaat(){
 function migreer(s){
   if(!s || typeof s !== "object") return nieuweStaat();
   if(s.v === 1){ s = Object.assign({}, s, {gezocht: s.gezocht || 0, v: 2}); }
+  if(s.v === 2){ s = Object.assign({}, s, {locatie: s.locatie || null, v: 3}); }
   if(s.v === VERSIE) return s;
   const schoon = nieuweStaat();
   return Object.assign(schoon, s, {v: VERSIE});
@@ -558,6 +560,21 @@ const SCENES = {
 
   /* -------------------------- HOOFDSTUK 1 -------------------------- */
 
+  kanselier_kaart: {
+    plaat:"kanselier", kop:"De kanselierskamer, de ochtend na de ridderslag", titel:"Een kaart, geen bevel",
+    tekst:[
+      "De kanselier rolt een vel over de tafel en houdt de hoeken plat met twee vingers. «Een ridder zonder kaart is een knecht die ver kan lopen,» zegt hij. «Deze is getekend voor de schout. Vanaf vandaag is hij van jou.»",
+      "«Ik geef geen bevelen mee,» zegt hij, en dat is zelf al een soort bevel. «Waar je heen gaat en langs welke weg, bepaal je zelf. Wat je onderweg tegenkomt, ook.»"
+    ],
+    keuzes:[
+      {tekst:"Neem de kaart aan.", naar:"hoofdstuk1", doe(){
+        S.vlaggen.heeft_kaart = true;
+        S.locatie = "beversluis";
+        schrijf("Ontving van de kanselier een kaart van de omgeving van Beversluis.",2);
+      }}
+    ]
+  },
+
   hoofdstuk1: {
     plaat:"poort", kop:"Beversluis, de maanden na de ridderslag", titel:"Wat een ridder verdient",
     tekst:[
@@ -717,6 +734,145 @@ function gevangenNemen(soort){
       doe(){ S.gezocht = 0; schrijf("Vrijgelaten uit de kerker van Beversluis, magerder dan hij er in ging.",2); }}]
   };
   return "kerker";
+}
+
+/* ---------------------------------------------------------------------
+   5c. DE KAART EN DE WEG — zelf reizen, routes kiezen, iets tegenkomen
+   --------------------------------------------------------------------- */
+const PLAATSEN = {
+  hooiveld:   {naam:"Hooiveld",   x:52,  y:176},
+  vier_eiken: {naam:"Vier Eiken", x:182, y:120},
+  beversluis: {naam:"Beversluis", x:286, y:112}
+};
+
+const ROUTES = {
+  "beversluis|vier_eiken": [
+    {id:"brede_weg", naam:"De brede weg", omschrijving:"Langs de akkers en de Zwarte Ley. Langzamer, maar je ziet ver.", etappes:3, risico:.3},
+    {id:"weelbos",   naam:"Door het Weelbos", omschrijving:"Sneller, dwars door het bos. Je weet nooit wie er meeloopt.", etappes:2, risico:.6}
+  ]
+};
+
+function routeKey(a,b){ return [a,b].sort().join("|"); }
+
+function reisWerfOnderweg(){
+  const gebruikt = new Set(S.manschappen.map(m=>m.naam));
+  const beschikbaar = DORPSNAMEN.filter(n=>!gebruikt.has(n));
+  if(!beschikbaar.length) return null;
+  const naam = beschikbaar[Math.floor(Math.random()*beschikbaar.length)];
+  S.manschappen.push({naam, opleiding:0, kleding:"eigen_kleren", wapen:"geen"});
+  schrijf(`${naam} sloot zich onderweg bij het leger aan.`,2);
+  return naam;
+}
+
+const REISGEBEURTENISSEN = [
+  {
+    type:"Je hoort",
+    tekst:"een tak die breekt, ergens rechts van het pad. Te dichtbij voor een ree.",
+    negerenTekst:"Je haalt de teugels aan en rijdt door. Wat het ook was, het blijft achter je.",
+    stilstaan(){
+      if(Math.random() < .5) return "Je wacht met je hand aan het gevest. Na een tel stapt een ree het pad op, schrikt van je, en is weg tussen de struiken.";
+      const verlies = Math.min(S.munten, 3 + Math.floor(Math.random()*6));
+      S.munten -= verlies;
+      return verlies > 0
+        ? `Een hand grist naar je zadeltas voor je hem ziet. Tegen de tijd dat je je zwaard hebt, is er alleen struikgewas. Je bent ${verlies} penningen kwijt.`
+        : "Een hand grist naar je zadeltas, maar vindt niets. Tegen de tijd dat je je zwaard hebt, is er alleen struikgewas.";
+    }
+  },
+  {
+    type:"Je ziet",
+    tekst:"een man langs de weg zitten, met een half kapotte laars, die opkijkt zodra je paard nadert.",
+    negerenTekst:"Je knikt kort en rijdt door. Hij kijkt je na tot de bocht.",
+    stilstaan(){
+      const naam = reisWerfOnderweg();
+      return naam
+        ? `«Ik kan lopen, en ik kan een mes vasthouden,» zegt hij. «Ik heb alleen niemand om voor te lopen.» ${naam} sluit zich bij je aan.`
+        : "«Ik red me wel,» zegt hij, voor je iets kunt vragen. Hij is alweer aan het lopen voor je van je paard bent.";
+    }
+  },
+  {
+    type:"Je ziet",
+    tekst:"rook, dun en recht omhoog, net boven de bomen links van het pad.",
+    negerenTekst:"Rook is niet altijd jouw zaak. Je rijdt door.",
+    stilstaan(){
+      const vondst = 4 + Math.floor(Math.random()*8);
+      S.munten += vondst;
+      S.eer = Math.max(0, S.eer-1);
+      return `Een handelskar, uitgebrand, één wiel nog na-smeulend. Wie hier ook was, is al lang weg. Tussen de as vind je ${vondst} penningen die de hitte niet deerde. Je voelt je er niet goed bij, en je neemt ze toch mee.`;
+    }
+  },
+  {
+    type:"Een aanwijzing",
+    tekst:"bij de wegwijzer staan verse hoefafdrukken. Meerdere paarden, allemaal dezelfde kant op.",
+    negerenTekst:"Sporen zijn er altijd. Je rijdt door.",
+    stilstaan(){
+      const vondst = 2 + Math.floor(Math.random()*5);
+      S.munten += vondst;
+      return `Je volgt de sporen een klein eind het gras in en vindt een buidel die iemand niet miste tot het te laat was — ${vondst} penningen. De sporen zelf lopen door, verder dan jij nu wilt gaan.`;
+    }
+  },
+  {
+    type:"Je hoort",
+    tekst:"gezang, ver weg, ergens achter je op hetzelfde pad.",
+    negerenTekst:"Je laat hem achter je. Het gezang wordt zachter en verdwijnt.",
+    stilstaan(){
+      fluister("Een marskramer zong over een ridder met een rode baard die alleen reisde en niemand nodig had.",1);
+      return "Een marskramer haalt je in, zingend, en loopt een tijd naast je paard. Hij vertelt meer dan hij weet en weet meer dan hij vertelt. Dan slaat hij een zijpad in, en is weg.";
+    }
+  }
+];
+
+let reis = null;
+
+function reisKiezen(naar){
+  reis = {fase:"route", naar};
+  render();
+}
+
+function reisAnnuleren(){
+  reis = null;
+  render();
+}
+
+function reisStart(routeId){
+  const opties = ROUTES[routeKey(S.locatie, reis.naar)] || [];
+  const route = opties.find(r=>r.id===routeId);
+  if(!route) return;
+  reis = {fase:"onderweg", route, van:S.locatie, naar:reis.naar, etappe:0, gebeurtenis:null, uitkomst:null};
+  reisEtappe();
+}
+
+function reisEtappe(){
+  reis.etappe += 1;
+  reis.uitkomst = null;
+  if(reis.etappe > reis.route.etappes){
+    const van = PLAATSEN[reis.van].naam, naar = PLAATSEN[reis.naar].naam;
+    schrijf(`Reisde van ${van} naar ${naar} — ${reis.route.naam}.`,2);
+    S.locatie = reis.naar;
+    reis = null;
+    bewaar(); render();
+    return;
+  }
+  reis.gebeurtenis = Math.random() < reis.route.risico
+    ? REISGEBEURTENISSEN[Math.floor(Math.random()*REISGEBEURTENISSEN.length)]
+    : null;
+  if(!reis.gebeurtenis) reis.uitkomst = "De weg is hier stil. Niets bijzonders.";
+  bewaar(); render();
+}
+
+function reisNegeren(){
+  reis.uitkomst = reis.gebeurtenis.negerenTekst;
+  reis.gebeurtenis = null;
+  bewaar(); render();
+}
+
+function reisStilstaanDoen(){
+  reis.uitkomst = reis.gebeurtenis.stilstaan();
+  reis.gebeurtenis = null;
+  bewaar(); render();
+}
+
+function reisVerder(){
+  reisEtappe();
 }
 
 /* ---------------------------------------------------------------------
@@ -939,7 +1095,7 @@ function toonVerhaal(){
     h += `<p class="label" style="text-align:center;margin-top:.6rem">Renze Roodbaard · eer ${S.eer} · ${S.munten} penningen</p>`;
     h += `<hr class="regel"><p class="label">Hoofdstuk 1</p>
       <div class="keuzes">
-        <button class="keuze" onclick="ga('hoofdstuk1')">Naar Beversluis<small>Spionage, karavanen, dieven — en de weg die je niet zou moeten kiezen.</small></button>
+        <button class="keuze" onclick="ga('kanselier_kaart')">Naar Beversluis<small>Spionage, karavanen, dieven — en de weg die je niet zou moeten kiezen.</small></button>
       </div>`;
     h += `<p style="margin-top:1rem"><button class="knop knop--stil" onclick="opnieuw()">Begin een nieuwe kroniek</button></p>`;
   } else if(sc.keuzes){
@@ -1128,9 +1284,9 @@ function zegelSvg(nieuw){
   </svg>`;
 }
 
-function toonKaart(){
-  let h = `<article class="blad"><p class="kop">De omgeving van Beversluis</p><h1>Kaart</h1>
-  <svg class="kaart" viewBox="0 0 320 220" role="img" aria-label="Vergeelde kaart van de omgeving">
+function kaartSvg(){
+  const renze = S.vlaggen.heeft_kaart && PLAATSEN[S.locatie] ? PLAATSEN[S.locatie] : null;
+  return `<svg class="kaart" viewBox="0 0 320 220" role="img" aria-label="Vergeelde kaart van de omgeving">
     <defs>
       <filter id="oud"><feTurbulence type="fractalNoise" baseFrequency=".04" numOctaves="2" result="n"/>
         <feDisplacementMap in="SourceGraphic" in2="n" scale="2.4"/></filter>
@@ -1150,11 +1306,67 @@ function toonKaart(){
       <text x="24" y="56" opacity=".8">de Zwarte Ley</text>
     </g>
     ${S.gezegeld ? "" : `<rect class="mist" x="212" y="76" width="108" height="70"/>`}
+    ${renze ? `<circle cx="${renze.x}" cy="${renze.y}" r="7" fill="none" stroke="#7d1f1a" stroke-width="1.6"><animate attributeName="r" values="6;8;6" dur="2s" repeatCount="indefinite"/></circle>` : ""}
     <text x="8" y="212" opacity=".6">Getekend voor de schout, jaar van de late oogst</text>
   </svg>`;
+}
+
+function toonKaart(){
+  if(!S.vlaggen.heeft_kaart) return toonKaartOud();
+  if(reis && reis.fase === "route") return toonReisRoute();
+  if(reis && reis.fase === "onderweg") return toonReisOnderweg();
+  return toonKaartReizen();
+}
+
+function toonKaartOud(){
+  let h = `<article class="blad"><p class="kop">De omgeving van Beversluis</p><h1>Kaart</h1>${kaartSvg()}`;
   h += `<p class="cijfers" style="margin-top:.7rem">${S.gezegeld
     ? "Beversluis is opengeslagen. Er is nog veel wit perkament naar het oosten."
     : "Een deel van de kaart is nog onbeschreven. Reis erheen om het te laten tekenen."}</p>`;
+  return h + `</article>`;
+}
+
+function toonKaartReizen(){
+  const hier = PLAATSEN[S.locatie];
+  let h = `<article class="blad"><p class="kop">Je bevindt je in ${hier.naam}</p><h1>Kaart</h1>${kaartSvg()}`;
+  h += `<hr class="regel"><div class="keuzes">`;
+  for(const id in PLAATSEN){
+    if(id === S.locatie) continue;
+    const plaats = PLAATSEN[id];
+    const opties = ROUTES[routeKey(S.locatie, id)];
+    if(!opties){
+      h += `<button class="keuze" disabled style="opacity:.5;border-left-color:var(--perkament-schaduw)">${plaats.naam}<small>Nog geen route uitgestippeld hierheen.</small></button>`;
+    } else {
+      h += `<button class="keuze" onclick="reisKiezen('${id}')">Reis naar ${plaats.naam}<small>${opties.length} route${opties.length>1?"s":""} bekend.</small></button>`;
+    }
+  }
+  h += `</div></article>`;
+  return h;
+}
+
+function toonReisRoute(){
+  const naar = PLAATSEN[reis.naar];
+  const opties = ROUTES[routeKey(S.locatie, reis.naar)] || [];
+  let h = `<article class="blad"><p class="kop">Op weg naar ${naar.naam}</p><h1>Kies een route</h1>${kaartSvg()}`;
+  h += `<hr class="regel"><div class="keuzes">` + opties.map(r=>
+    `<button class="keuze" onclick="reisStart('${r.id}')">${r.naam}<small>${r.omschrijving}</small></button>`
+  ).join("") + `</div>`;
+  h += `<p style="margin-top:.8rem"><button class="knop knop--stil" onclick="reisAnnuleren()">Toch niet.</button></p>`;
+  return h + `</article>`;
+}
+
+function toonReisOnderweg(){
+  let h = `<article class="blad"><p class="kop">Onderweg naar ${PLAATSEN[reis.naar].naam} — ${reis.route.naam}</p>
+    <h1>Etappe ${reis.etappe} van ${reis.route.etappes}</h1>`;
+  if(reis.gebeurtenis){
+    h += `<p class="label">${reis.gebeurtenis.type}</p><p>${reis.gebeurtenis.tekst}</p>
+      <hr class="regel"><div class="keuzes">
+        <button class="keuze" onclick="reisNegeren()">Negeren. Doorrijden.<small>Wat het ook is, je laat het achter je.</small></button>
+        <button class="keuze" onclick="reisStilstaanDoen()">Stilstaan. Iets doen.<small>Je stapt af om te kijken wat het is.</small></button>
+      </div>`;
+  } else {
+    h += `<p>${reis.uitkomst}</p><hr class="regel"><button class="knop" onclick="reisVerder()">Rijd verder</button>`;
+  }
   return h + `</article>`;
 }
 
@@ -1273,7 +1485,7 @@ function opnieuw(){
   try { door = confirm("De hele kroniek wissen en opnieuw beginnen?"); }
   catch(e){ door = true; } // sommige voorvertoningen (sandboxed iframes) staan confirm() niet toe
   if(!door) return;
-  OPSLAG.wis(); S = nieuweStaat(); duel = null; bewaar(); render(); window.scrollTo({top:0});
+  OPSLAG.wis(); S = nieuweStaat(); duel = null; reis = null; bewaar(); render(); window.scrollTo({top:0});
 }
 
 render();
