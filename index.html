@@ -270,6 +270,7 @@ const OPSLAG = (() => {
 const ASSETS = {
   landkaart:   "assets/kaarten/landkaart.webp",
   beversluis_plattegrond: "assets/kaarten/beversluis-plattegrond.webp",
+  galgenboom:  "assets/scene/galgenboom.webp",
   smidse:      "assets/scene/smidse.webp",
   vier_eiken:  "assets/scene/vier-eiken.webp",
   duel:        "assets/scene/duel.webp",
@@ -349,6 +350,11 @@ const ETSEN = {
     <path d="M20 70V14M40 70V14M60 70V14M80 70V14M100 70V14"/>
     <path d="M14 70h92" stroke-width="2.4"/><path d="M14 16h92" stroke-width="2.4"/>
     <path d="M34 60c0-8 4-14 4-14" opacity=".4"/></g></svg>`,
+  galgenboom:`<svg viewBox="0 0 120 80"><g stroke="#241a10" fill="none" stroke-width="1.6" stroke-linecap="round">
+    <path d="M100 74V18c0-5 8-8 14-4" stroke-width="2.2"/><path d="M100 28c-16-2-34 3-52 12"/>
+    <path d="M60 40v5" stroke-width="1.3"/><path d="M56 45h8v17a4 4 0 01-8 0z" fill="#241a10" opacity=".8" stroke="none"/>
+    <path d="M14 66c8-3 20-4 26 0s4 8-4 8-16-4-22-8z" opacity=".55"/>
+    <path d="M8 74h104" stroke-width=".8" opacity=".5"/></g></svg>`,
   leeg:`<svg viewBox="0 0 60 60"><g stroke="#241a10" fill="none" stroke-width="1.2" opacity=".45"><path d="M12 48L48 12M48 48L12 12"/><rect x="12" y="12" width="36" height="36"/></g></svg>`
 };
 
@@ -942,15 +948,6 @@ const GEB_RIETVELD = {
   }
 };
 
-const GEB_GALGENBOOM_VERTE = {
-  type:"Je ziet",
-  tekst:"in de verte, waar het rieland overgaat in vaste grond, een kale boom met iets dat zwaait dat geen tak is. Raven, stil, in de takken.",
-  negerenTekst:"Je kijkt niet nog eens. De weg buigt toch al van de boom vandaan.",
-  stilstaan(){
-    return "Je blijft op afstand. Wat er ook aan die boom hangt, het is niet jouw zaak vandaag — en de raven hebben geen haast om dat te veranderen.";
-  }
-};
-
 const ROUTES = {
   "hooiveld|vier_eiken": [
     {
@@ -978,6 +975,7 @@ const ROUTES = {
       omschrijving:"Voorbij de drassige oversteek en de galgenboom, dan de oude wachtpost langs. Amper een pad.",
       kenmerken:["Zeer riskant","Modderig, amper begaanbaar","Raven boven de galgenboom"],
       vergrendeld(){ return S.vlaggen.paard_schuwt_galgenpad ? "Je paard weigert dit pad nog eens te nemen. Wat je ook probeert." : null; },
+      passeertGalgenboom:true,
       gebeurtenissen:[GEB_RAVEN, GEB_DRASSIGE_OVERSTEEK, GEB_WACHTPOST]
     }
   ],
@@ -986,7 +984,8 @@ const ROUTES = {
       id:"rieland", naam:"Langs het rieland", etappes:3, risico:.5,
       omschrijving:"Om Vier Eiken heen, door het rieland, tot de galgenboom en de wachtpost. Een omweg zonder dorpen.",
       kenmerken:["Riskant","Drassig rieland","Geen dorpen onderweg"],
-      gebeurtenissen:[GEB_RIETVELD, GEB_WACHTPOST, GEB_GALGENBOOM_VERTE]
+      passeertGalgenboom:true,
+      gebeurtenissen:[GEB_RIETVELD, GEB_WACHTPOST]
     }
   ]
 };
@@ -1014,11 +1013,18 @@ function reisStart(routeId){
 function reisEtappe(){
   reis.etappe += 1;
   reis.uitkomst = null;
+  reis.gebeurtenis = null;
+  reis.galgenboom = null;
   if(reis.etappe > reis.route.etappes){
     const van = PLAATSEN[reis.van].naam, naar = PLAATSEN[reis.naar].naam;
     schrijf(`Reisde van ${van} naar ${naar} — ${reis.route.naam}.`,2);
     S.locatie = reis.naar;
     reis = null;
+    bewaar(); render();
+    return;
+  }
+  if(reis.route.passeertGalgenboom && !S.vlaggen.galgenboom_lot && reis.etappe === 1){
+    reis.galgenboom = "keuze";
     bewaar(); render();
     return;
   }
@@ -1044,6 +1050,39 @@ function reisStilstaanDoen(){
 
 function reisVerder(){
   reisEtappe();
+}
+
+/* De galgenboom: een eenmalige, gescripte ontmoeting die de eerste keer
+   optreedt dat een pad er langs komt (niet aan het toeval overgelaten,
+   zoals de gewone reisgebeurtenissen). De keuze wordt onthouden in
+   S.vlaggen.galgenboom_lot en kan door latere inhoud worden opgepikt. */
+function galgenboomKiezen(keuze){
+  if(keuze === "redden"){
+    reis.galgenboom = "bestemming";
+    bewaar(); render();
+    return;
+  }
+  S.vlaggen.galgenboom_lot = keuze;
+  if(keuze === "laten"){
+    schrijf("Liet een levende man hangen aan de galgenboom, verrader op zijn borst geschreven.",2);
+    reis.uitkomst = "Je laat hem hangen. Zijn hoofd komt net omhoog als je wegrijdt — genoeg om je gezicht te zien en te onthouden. De raven wachten geduldiger dan jij.";
+  } else {
+    S.eer = Math.max(0, S.eer - 1);
+    schrijf("Gaf een gehangen man de genadedolk bij de galgenboom.",2);
+    reis.uitkomst = "Eén stoot, onder de ribben, kort. Je snijdt hem pas daarna los, uit fatsoen dat de strop hem niet gunde. Wie hij ook was — verrader of een naam die de kanselier nog mist — de aarde krijgt hem, niet de kraaien.";
+  }
+  reis.galgenboom = null;
+  bewaar(); render();
+}
+
+function galgenboomRedden(naarId){
+  S.vlaggen.galgenboom_lot = "gered";
+  S.vlaggen.verrader_naar = naarId;
+  const naam = PLAATSEN[naarId].naam;
+  schrijf(`Sneed een gehangen man los bij de galgenboom en bracht hem, gewond, naar ${naam}.`,2);
+  S.locatie = naarId;
+  reis = null;
+  bewaar(); render(); window.scrollTo({top:0});
 }
 
 /* ---------------------------------------------------------------------
@@ -1527,7 +1566,7 @@ function toonKaartReizen(){
 
   if(reis && reis.fase === "onderweg"){
     h += `<p class="cijfers" style="margin-top:.6rem">Etappe ${reis.etappe} van ${reis.route.etappes} — onderweg naar ${PLAATSEN[reis.naar].naam}, ${reis.route.naam.toLowerCase()}.</p>`;
-    if(!reis.gebeurtenis){
+    if(!reis.gebeurtenis && !reis.galgenboom){
       h += `<p style="margin:.3rem 0 0">${reis.uitkomst}</p>
         <p style="margin-top:.6rem"><button class="knop" onclick="reisVerder()">Rijd verder</button></p>`;
     }
@@ -1540,7 +1579,8 @@ function toonKaartReizen(){
   h += `</article>`;
 
   if(reis && reis.fase === "route") h += tussendoorRoute();
-  if(reis && reis.fase === "onderweg" && reis.gebeurtenis) h += tussendoorGebeurtenis();
+  if(reis && reis.fase === "onderweg" && reis.galgenboom) h += tussendoorGalgenboom();
+  else if(reis && reis.fase === "onderweg" && reis.gebeurtenis) h += tussendoorGebeurtenis();
   return h;
 }
 
@@ -1659,6 +1699,34 @@ function kaartInitZoom(){
     kaartZoomOm(e.clientX-rect.left, e.clientY-rect.top, kz.zoom < kz.max ? Math.min(kz.max, kz.zoom*2) : kz.min);
     kaartToepassenTransform();
   });
+}
+
+function tussendoorGalgenboom(){
+  if(reis.galgenboom === "bestemming"){
+    const opties = [reis.van, reis.naar];
+    return `<div class="overlay-achtergrond"><div class="overlay-blad">
+      <p class="kop">De galgenboom</p><h1>Waar breng je hem naartoe?</h1>
+      <p>Hij is te zwak om te lopen en je hebt geen tijd om te kiezen alsof het niet uitmaakt. Elke stap de verkeerde kant op kan zijn laatste zijn.</p>
+      <div class="keuzes" style="margin-top:.6rem">` + opties.map(id=>{
+        const plek = PLAATSEN[id].naam;
+        const wenk = id === "vier_eiken"
+          ? "Sommigen daar zullen hem niet welkom heten — al weet je nog niet waarom."
+          : "Verder, maar niemand die hem al haat voor je er bent.";
+        return `<button class="keuze" onclick="galgenboomRedden('${id}')">${plek}<small>${wenk}</small></button>`;
+      }).join("") + `</div>
+    </div></div>`;
+  }
+  return `<div class="overlay-achtergrond"><div class="overlay-blad">
+    <p class="kop">De galgenboom</p><h1>Verrader</h1>
+    ${plaat("galgenboom")}
+    <p>Aan de galgenboom hangt een man, nog niet dood. Zijn voeten zoeken grond die er niet is. Naast de boom ligt zijn paard, opengereten — de raven zijn al aan het werk. Op zijn ontblote borst staat, met iets dat te rood is om verf te zijn: <strong>VERRADER</strong>.</p>
+    <p>Wat doe je?</p>
+    <div class="keuzes" style="margin-top:.6rem">
+      <button class="keuze" onclick="galgenboomKiezen('laten')">Laat hem hangen.<small>Wie hem ophing, had daar een reden voor. Niet de jouwe om te ontkennen.</small></button>
+      <button class="keuze" onclick="galgenboomKiezen('doden')">Geef hem de genadedolk.<small>Eén stoot. Sneller dan de kraaien.</small></button>
+      <button class="keuze" onclick="galgenboomKiezen('redden')">Snijd hem los.<small>Wat hij ook deed, dit is geen dood voor een mens.</small></button>
+    </div>
+  </div></div>`;
 }
 
 function tussendoorRoute(){
