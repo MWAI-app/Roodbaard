@@ -176,6 +176,15 @@ button{font:inherit;cursor:pointer}
 }
 .riem button[aria-current="true"]{color:#f0dda9;border-bottom-color:var(--verguld)}
 .riem svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.5}
+
+/* Ontwikkelknop: snel de kroniek wissen om plaatjes te controleren */
+.herstart{
+  position:fixed;top:.5rem;right:.5rem;z-index:20;
+  background:rgba(34,24,18,.88);color:#d9c393;border:1px solid var(--leer-naad);
+  font-family:var(--kapitaal);font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;
+  padding:.4rem .6rem;border-radius:2px;
+}
+.herstart:hover,.herstart:focus-visible{color:#f0dda9;border-color:var(--verguld)}
 .fluister{font-family:var(--hand);color:var(--inkt-tweede);margin:.2rem 0 .5rem}
 .melding{max-width:var(--blad);margin:0 auto .8rem;color:#d9c393;font-size:.85rem;text-align:center}
 textarea,input[type=password]{width:100%;font:inherit;background:rgba(255,255,255,.5);border:1px solid var(--perkament-schaduw);color:var(--inkt);padding:.5rem}
@@ -183,6 +192,7 @@ textarea,input[type=password]{width:100%;font:inherit;background:rgba(255,255,25
 </style>
 </head>
 <body>
+<button id="herstart" class="herstart" onclick="opnieuw()" title="Wis de kroniek en begin opnieuw bij de smidse">⟲ Herstart</button>
 <main id="app" aria-live="polite"></main>
 <nav class="riem" id="riem"></nav>
 
@@ -232,7 +242,12 @@ const ASSETS = {
   harnas_gerlof:    "assets/kleding/harnas.webp",
   jachtmes:    "assets/wapen/jachtmes.webp",
   knuppel:     "assets/wapen/knuppel.webp",
-  zwaard:      "assets/wapen/zwaard-van-weel.webp"
+  zwaard:      "assets/wapen/zwaard-van-weel.webp",
+  kanselier:   "assets/scene/kanselier.webp",
+  karavaan:    "assets/scene/karavaan.webp",
+  steeg:       "assets/scene/steeg.webp",
+  kruispunt:   "assets/scene/kruispunt.webp",
+  kerker:      "assets/scene/kerker.webp"
 };
 
 /* Inkt-etsen: de terugval, bewust in stijl en niet als foutmelding */
@@ -271,6 +286,28 @@ const ETSEN = {
   jachtmes:`<svg viewBox="0 0 60 60"><g stroke="#241a10" fill="none" stroke-width="1.7" stroke-linecap="round"><path d="M14 44l22-22 6 2-22 22z"/><path d="M40 20l6-6"/><path d="M12 46l6 2" stroke-width="2.4"/></g></svg>`,
   knuppel:`<svg viewBox="0 0 60 60"><g stroke="#241a10" fill="none" stroke-width="1.8" stroke-linecap="round"><path d="M16 46l18-18"/><path d="M34 28c4-6 12-8 14-2s-2 12-8 12-8-4-6-10z"/><path d="M14 48l5-5" stroke-width="3"/></g></svg>`,
   zwaard:`<svg viewBox="0 0 60 60"><g stroke="#241a10" fill="none" stroke-width="1.8" stroke-linecap="round"><path d="M30 50V12"/><path d="M20 20h20"/><path d="M30 12l-4-6h8z" fill="#7d1f1a" stroke="none"/><path d="M27 50h6" stroke-width="2.6"/></g></svg>`,
+  kanselier:`<svg viewBox="0 0 120 80"><g stroke="#241a10" fill="none" stroke-width="1.6" stroke-linecap="round">
+    <path d="M20 66h80" stroke-width="2.2"/><path d="M30 66V50h50v16"/>
+    <path d="M40 50c0-6 4-10 10-10s10 4 10 10" opacity=".6"/>
+    <path d="M70 30l14-10 3 4-14 10z" fill="#241a10" opacity=".85"/><path d="M72 34l-8 10"/>
+    <path d="M94 20v14" stroke-width="1.2" opacity=".7"/>
+    <path d="M8 72h104" stroke-width=".8" opacity=".5"/></g></svg>`,
+  karavaan:`<svg viewBox="0 0 120 80"><g stroke="#241a10" fill="none" stroke-width="1.6" stroke-linecap="round">
+    <path d="M22 54h50l-6-20H30z"/><circle cx="34" cy="60" r="7"/><circle cx="62" cy="60" r="7"/>
+    <path d="M72 54l18-4" stroke-width="1.4"/><path d="M14 62h4" stroke-width="2.2"/>
+    <path d="M8 72h104" stroke-width=".8" opacity=".5"/></g></svg>`,
+  steeg:`<svg viewBox="0 0 120 80"><g stroke="#241a10" fill="none" stroke-width="1.6" stroke-linecap="round">
+    <path d="M20 74V18M100 74V26"/><path d="M20 18l16 8M100 26l-14 6" opacity=".6"/>
+    <path d="M58 74V44c0-6 4-10 8-10s8 4 8 10v30" fill="#241a10" opacity=".8" stroke="none"/>
+    <path d="M8 76h104" stroke-width=".8" opacity=".5"/></g></svg>`,
+  kruispunt:`<svg viewBox="0 0 120 80"><g stroke="#241a10" fill="none" stroke-width="1.6" stroke-linecap="round">
+    <path d="M4 60c30-10 82-10 112 0" opacity=".6"/><path d="M60 74V20"/>
+    <path d="M60 28h20l-6 6 6 6H60z" fill="#241a10" opacity=".8" stroke="none"/>
+    <path d="M60 40h-18l5 5-5 5h18z" opacity=".6"/></g></svg>`,
+  kerker:`<svg viewBox="0 0 120 80"><g stroke="#241a10" fill="none" stroke-width="1.8" stroke-linecap="round">
+    <path d="M20 70V14M40 70V14M60 70V14M80 70V14M100 70V14"/>
+    <path d="M14 70h92" stroke-width="2.4"/><path d="M14 16h92" stroke-width="2.4"/>
+    <path d="M34 60c0-8 4-14 4-14" opacity=".4"/></g></svg>`,
   leeg:`<svg viewBox="0 0 60 60"><g stroke="#241a10" fill="none" stroke-width="1.2" opacity=".45"><path d="M12 48L48 12M48 48L12 12"/><rect x="12" y="12" width="36" height="36"/></g></svg>`
 };
 
@@ -299,9 +336,33 @@ const ITEMS = {
 const LAAGNAMEN = {onder:"Onderkleed", midden:"Midden", harnas:"Harnas", wapen:"Wapen"};
 
 /* ---------------------------------------------------------------------
+   3b. HET LEGER — dorpelingen werven, trainen, kleden
+   --------------------------------------------------------------------- */
+const DORPSNAMEN = ["Joos","Baltus","Meino","Egge","Aldert","Reinout","Dodo","Gerke","Sytse","Wolter","Harmen","Cune","Ebbo","Folkert","Tjard"];
+const VOLGKLEDING = {
+  eigen_kleren:  {naam:"Eigen kleren",        prijs:0,  ontzag:0, noot:"Wat hij al droeg toen hij zich meldde."},
+  gelapt_hemd:   {naam:"Gelapt hemd",         prijs:4,  ontzag:0, noot:"Beter dan niets, nauwelijks."},
+  leren_wambuis: {naam:"Leren wambuis",       prijs:9,  ontzag:1, noot:"Houdt de kou tegen, en soms een vuist."},
+  ijzeren_kap:   {naam:"Ijzeren kap en jak",  prijs:16, ontzag:2, noot:"Nu lijkt hij ergens bij te horen."}
+};
+const VOLGWAPEN = {
+  geen:     {naam:"Blote handen", prijs:0,  kracht:0, noot:"Nog niets uitgereikt."},
+  hooivork: {naam:"Hooivork",     prijs:2,  kracht:1, noot:"Wat de boerderij kon missen."},
+  knuppel:  {naam:"Knuppel",      prijs:5,  kracht:2, noot:"Simpel, en het werkt."},
+  bijl:     {naam:"Handbijl",     prijs:11, kracht:3, noot:"Voor hout. Nu niet."},
+  piek:     {naam:"Piek",         prijs:15, kracht:4, noot:"Houdt afstand. Daarom blijven ze langer leven."}
+};
+const OPLEIDINGEN = ["Ongetraind","Geoefend","Doorgehard"];
+const OPLEIDINGKOSTEN = [10,25];
+
+function legerkracht(){
+  return S.manschappen.reduce((t,m)=> t + m.opleiding + (VOLGWAPEN[m.wapen]?.kracht||0), 0);
+}
+
+/* ---------------------------------------------------------------------
    4. SPELSTAAT + migratie
    --------------------------------------------------------------------- */
-const VERSIE = 1;
+const VERSIE = 2;
 
 function nieuweStaat(){
   return {
@@ -313,6 +374,7 @@ function nieuweStaat(){
     munten: 0,
     eer: 0,
     gerucht: 0,
+    gezocht: 0,
     fluisters: [],
     vlaggen: {},
     dracht: {onder:"linnen_hemd", midden:"gelapt_wambuis", harnas:null, wapen:null},
@@ -329,8 +391,8 @@ function nieuweStaat(){
 
 function migreer(s){
   if(!s || typeof s !== "object") return nieuweStaat();
+  if(s.v === 1){ s = Object.assign({}, s, {gezocht: s.gezocht || 0, v: 2}); }
   if(s.v === VERSIE) return s;
-  // Toekomstige migraties: if(s.v === 1){ ...; s.v = 2; }
   const schoon = nieuweStaat();
   return Object.assign(schoon, s, {v: VERSIE});
 }
@@ -492,8 +554,170 @@ const SCENES = {
       "Wat hierna komt is nog niet geschreven. Er liggen vier wegen open, en drie ervan leiden ergens goed heen."
     ],
     slot:true
+  },
+
+  /* -------------------------- HOOFDSTUK 1 -------------------------- */
+
+  hoofdstuk1: {
+    plaat:"poort", kop:"Beversluis, de maanden na de ridderslag", titel:"Wat een ridder verdient",
+    tekst:[
+      "Een titel vult geen beurs. Het kasteel geeft je een kamer boven de stal en een plaats aan de lange tafel, en daarmee is de rekening voldaan. Wat je verder verdient, verdien je zelf.",
+      "Beversluis kent vier soorten werk voor een man met een zwaard en een naam die nog moet groeien. De kanselier zoekt oren die niemand verdenkt. De karavaanmeester zoekt een zwaard voor onderweg. De schout betaalt per dief, dood of levend, liever levend. En het kruispunt na middernacht vraagt om niets, behalve dat je er bent."
+    ],
+    keuzes:[
+      {tekst:"Meld je bij de kanselier.", onder:"Spionage. Betaalt goed, praat er met niemand over.", naar:"spionage_intro"},
+      {tekst:"Bied je aan bij de karavaanmeester.", onder:"Reizigers beschermen over de Zwarte Ley.", naar:"reizigers_intro"},
+      {tekst:"Meld je bij de schout.", onder:"Dieven vangen voor een vaste beloning.", naar:"dieven_intro"},
+      {tekst:"Wacht bij het kruispunt, na middernacht.", onder:"Nemen wat niet gegeven wordt.", naar:"beroven_intro"}
+    ]
+  },
+
+  spionage_intro: {
+    plaat:"kanselier", kop:"De kanselierskamer, zonder ramen", titel:"Oren die niemand verdenkt",
+    tekst:[
+      "De tellingen van het korenpakhuis kloppen al drie maanden niet, en de kanselier gelooft niet in muizen die zilver eten. Iemand in Beversluis verkoopt koren van de koning over de grens, en hij wil een naam, geen gerucht.",
+      "«Ridders vallen op,» zegt hij. «Jij nog niet. Gebruik dat zolang het duurt.»"
+    ],
+    keuzes:[
+      {tekst:"Dreig de pakhuisknechten tot iemand praat.", onder:"Snel. Ook snel bekend bij de verkeerde mensen.",
+       naar:"spionage_afloop", doe(){ spionageAfloop("dreigen"); }},
+      {tekst:"Koop een naam met eigen zilver.", onder:"Vijftien penningen, ongeacht wat het oplevert.",
+       naar:"spionage_afloop", doe(){ spionageAfloop("omkopen"); }},
+      {tekst:"Sluip 's nachts het pakhuis binnen.", onder:"Stil, als je stil kúnt zijn.",
+       naar:"spionage_afloop", doe(){ spionageAfloop("sluipen"); }}
+    ]
+  },
+
+  reizigers_intro: {
+    plaat:"karavaan", kop:"De weg langs de Zwarte Ley", titel:"Vracht en volk",
+    tekst:[
+      "De karavaanmeester telt drie wagens, twee te weinig wapens en een zoon die nog nooit een klap heeft uitgedeeld. «Er zit een bende tussen hier en Vier Eiken,» zegt hij. «Rij vooraan, ridder, en zorg dat we tellen bij aankomst wat we telden bij vertrek.»"
+    ],
+    keuzes:[
+      {tekst:"Rij vooraan de bocht in.", onder:"Zij zien jou het eerst. Dat is de bedoeling.",
+       naar:"duel", duelCtx:()=>REIZIGERS_DUEL_CTX}
+    ]
+  },
+
+  dieven_intro: {
+    plaat:"steeg", kop:"Het waaggebouw, vroeg", titel:"Een vaste beloning",
+    tekst:[
+      "De schout heeft een lijst en een klerk en geen geduld. «Er is een dief gezien bij de graanmarkt, twee keer deze week,» zegt hij. «Breng hem hier. Ik betaal per stuk, niet per verhaal.»"
+    ],
+    keuzes:[
+      {tekst:"Zoek hem tussen de kramen.", onder:"Vlug, en zonder harnas — net als jij ooit was.",
+       naar:"duel", duelCtx:()=>DIEVEN_DUEL_CTX}
+    ]
+  },
+
+  beroven_intro: {
+    plaat:"kruispunt", kop:"De weg naar Hooiveld, na middernacht", titel:"Wat niemand je geeft",
+    tekst:[
+      "Niemand hier kent je gezicht in het donker. Een harnas houdt een mes tegen; het houdt geen enkele vraag tegen die je jezelf niet stelt.",
+      "Er is niets dat je hier moet doen. Er is alleen iets dat je kúnt doen."
+    ],
+    keuzes:[
+      {tekst:"Wacht op een eenzame reiziger.", onder:"Weinig buit, weinig risico.",
+       naar:"beroven_afloop", doe(){ return berovenPoging("klein"); }},
+      {tekst:"Wacht op de graankar van de tollenaar.", onder:"Veel buit, veel risico.",
+       naar:"beroven_afloop", doe(){ return berovenPoging("groot"); }},
+      {tekst:"Keer om. Dit is het niet waard.", naar:"hoofdstuk1",
+       doe(){ schrijf("Stond bij het kruispunt na middernacht en reed weer terug.",2); }}
+    ]
   }
 };
+
+/* ---------------------------------------------------------------------
+   5b. HOOFDSTUK 1 — spionage en het kruispunt (dynamische afloopscenes)
+   --------------------------------------------------------------------- */
+function spionageAfloop(methode){
+  let tekst = [];
+  let succes = false;
+  if(methode === "omkopen"){
+    if(S.munten >= 15){
+      S.munten -= 15;
+      succes = true;
+      tekst.push("Vijftien penningen wisselen van hand in een hoek van de herberg, en een naam komt terug: Onno, de wachter bij de noordpoort, telt al een jaar te weinig zakken.");
+    } else {
+      tekst.push("Je hebt het zilver niet dat dit werk vraagt. Je gaat met lege handen terug naar de kanselier.");
+    }
+  } else if(methode === "dreigen"){
+    succes = (ontzag() + Math.random()*5) >= 6;
+    tekst.push(succes
+      ? "Eén knecht houdt het twee vragen vol. Bij de derde noemt hij Onno, de wachter bij de noordpoort."
+      : "Ze houden hun mond stijver dan je verwachtte van mannen die koren tellen. Wel weet nu heel het pakhuis dat er een ridder rondvraagt naar hun tellingen.");
+    if(!succes) fluister("Bij het korenpakhuis vroeg een ridder met een rode baard dingen die hij niet hoorde te vragen.",2);
+  } else if(methode === "sluipen"){
+    succes = (onopvallend() + Math.random()*6) >= 9;
+    tekst.push(succes
+      ? "Je vindt de valse balk in het pakhuis vóór het licht wordt: een dubbele bodem, en een lijst met namen die niet de koning dient. Bovenaan staat Onno, de wachter bij de noordpoort."
+      : "Een hond slaat aan voordat je bij de balk bent. Je bent weg voordat er een gezicht bij je naam komt, maar zeker weet je dat niet.");
+  }
+
+  if(succes){
+    S.munten += 25;
+    S.eer += 2;
+    schrijf("Ontmaskerde in het geheim de graanhandelaar Onno voor de kanselier van Beversluis.",2);
+    tekst.push("De kanselier betaalt vijfentwintig penningen zonder te knikken. Dit soort werk staat in geen enkele kroniek, en dat is precies de bedoeling.");
+  } else {
+    S.eer = Math.max(0, S.eer-1);
+    tekst.push("De kanselier zegt niets over falen. Hij noteert het wel.");
+  }
+
+  SCENES.spionage_afloop = {
+    plaat:"kanselier", kop:"Terug bij de kanselier", titel: succes ? "Een naam, geen gerucht" : "Niets om te melden",
+    tekst,
+    keuzes:[{tekst:"Terug naar Beversluis.", naar:"hoofdstuk1"}]
+  };
+}
+
+function berovenPoging(soort){
+  if(S.gezocht >= 3){ return gevangenNemen(soort); }
+  const buit = soort === "klein" ? 5 + Math.floor(Math.random()*6) : 15 + Math.floor(Math.random()*16);
+  const risico = soort === "klein" ? 0.25 : 0.55;
+  const ontsnapt = Math.random() > (risico - onopvallend()*0.03);
+  if(!ontsnapt){ return gevangenNemen(soort); }
+
+  S.munten += buit;
+  S.gezocht = (S.gezocht||0) + 1;
+  S.eer = Math.max(0, S.eer-1);
+  fluister(soort === "klein"
+    ? "Een koopman uit Hooiveld werd bij het kruispunt beroofd door een man met een rode baard."
+    : "De graankar van de tollenaar is niet aangekomen in Beversluis. Men fluistert een naam.", soort === "klein" ? 2 : 4);
+  schrijf(`Beroofde ${soort==="klein"?"een eenzame reiziger":"de graankar van de tollenaar"} bij het kruispunt. ${buit} penningen.`,2);
+
+  SCENES.beroven_afloop = {
+    plaat:"kruispunt", kop:"Het kruispunt", titel:"Buit",
+    tekst:[
+      `Het gaat snel en het gaat stil. Je telt ${buit} penningen bij het licht van de maan en voelt niets bijzonders, wat je zelf het meest verontrust.`,
+      S.gezocht >= 2 ? "Dit is niet de eerste keer. Er wordt naar je gezocht, ook al weet nog niemand welk gezicht daarbij hoort." : "Niemand heeft je gezien. Voor zover je weet."
+    ],
+    keuzes:[{tekst:"Terug naar Beversluis.", naar:"hoofdstuk1"}]
+  };
+  return "beroven_afloop";
+}
+
+function gevangenNemen(soort){
+  const harnasKwijt = !!S.dracht.harnas;
+  S.dracht.harnas = null;
+  S.eer = Math.max(0, S.eer-5);
+  const verloren = Math.min(S.munten, 10 + Math.floor(Math.random()*20));
+  S.munten -= verloren;
+  schrijf("Gevangen genomen bij het kruispunt en naar de kerker van Beversluis gebracht.",3,"vrijheid");
+
+  SCENES.kerker = {
+    plaat:"kerker", kop:"De kerker onder Beversluis, dagen zonder licht", titel:"Tussen zeer magere mannen",
+    tekst:[
+      "De cel is te laag om in te staan en te nat om in te liggen. De andere gevangenen zijn dun geworden op een manier die niets met vasten te maken heeft; hun ribben tellen mee als kalenderdagen.",
+      harnasKwijt ? "Het harnas van Weel hangt nu ergens in het wapenhuis van de schout, op naam van een ander." : "Wat je bezat is geteld, gewogen en ingenomen.",
+      `Je verliest ${verloren} penningen aan boetes die niemand je toont op papier. De schout komt zelf kijken, niet om te straffen, maar om te onthouden welk gezicht bij welke naam hoort.`,
+      "Na verloop van tijd word je vrijgelaten. Niemand zegt waarom. Misschien is een cel meer waard met een levende gevangene die weer iets kan verdienen dat de schout kan afnemen."
+    ],
+    keuzes:[{tekst:"De poort uit, het daglicht in.", naar:"hoofdstuk1",
+      doe(){ S.gezocht = 0; schrijf("Vrijgelaten uit de kerker van Beversluis, magerder dan hij er in ging.",2); }}]
+  };
+  return "kerker";
+}
 
 /* ---------------------------------------------------------------------
    6. DUEL — tempo en intentie. Stoot > Binden > Wijken > Stoot
@@ -505,8 +729,88 @@ const INTENTIES = {
 };
 let duel = null;
 
-function duelStart(){
+/* Context per duel: welke tekst, wie de tegenstander is, en wat winst/verlies betekent. */
+const PROLOOG_DUEL_CTX = {
+  plaatId:"duel",
+  kop:"Vier Eiken, tussen de wortels", titel:"Het duel",
+  vijandLabel:"De rover", vijandInfo:"mes, kort bereik",
+  raadFluisteraar:"Van Weel, halfluid",
+  gewonnenTekst:[
+    "Hij laat het mes vallen voordat je hem raakt. Dat doet iemand die dit vaker heeft gedaan en die weet wanneer het over is.",
+    "Je bindt hem met je eigen gordel. Achter je zegt Van Weel: «Goed.» En daarna niets meer, wat je pas veel later begrijpt."
+  ],
+  verlorenTekst:[
+    "Je ligt in de bladeren en de lucht wil niet naar binnen. Boven je gaat iets snel en zwaar, en dan is het stil.",
+    "Van Weel staat over je heen met de rover onder zijn knie. Hij hijgt door zijn tanden. «Sta op,» zegt hij. «Bind hem.» Er zit iets donkers onder zijn kolder, links."
+  ],
+  afGewonnen(){
+    S.eer += 2;
+    schrijf("Nam bij Vier Eiken eigenhandig de rover gevangen die drie reizigers had beroofd.",2);
+    if(!S.kist.includes("gevechtspak")) S.kist.push("gevechtspak");
+    ga("sterfbed");
+  },
+  afVerloren(){
+    S.vlaggen.gerlof_greep_in = true;
+    schrijf("Werd bij Vier Eiken van de grond geraapt door Gerlof van Weel, die daarbij het mes ving.",2);
+    if(!S.kist.includes("gevechtspak")) S.kist.push("gevechtspak");
+    ga("sterfbed");
+  }
+};
+
+const REIZIGERS_DUEL_CTX = {
+  plaatId:"karavaan",
+  kop:"De bocht bij de Zwarte Ley", titel:"Vooraan rijden",
+  vijandLabel:"De wegbandiet", vijandInfo:"kort zwaard, oud litteken",
+  raadFluisteraar:"Een van de wagenmenners, gespannen",
+  gewonnenTekst:[
+    "Hij gaat neer in de modder naast zijn eigen wapen en blijft liggen, wat verstandiger is dan opstaan.",
+    "De karavaanmeester telt de wagens. Drie op drie. Zijn zoon kijkt naar je alsof hij net besloten heeft wat hij wil worden."
+  ],
+  verlorenTekst:[
+    "Je wijkt te laat en de wond is dieper dan hij zich meteen voelt. De bandiet grist een zak van de achterste wagen en verdwijnt tussen de bomen voor iemand hem kan volgen.",
+    "De karavaanmeester zegt niets tegen je. Dat is erger dan wat hij had kunnen zeggen."
+  ],
+  afGewonnen(){
+    S.munten += 18; S.eer += 2;
+    schrijf("Versloeg een wegbandiet bij de Zwarte Ley en bracht de karavaan ongeschonden binnen.",2);
+    ga("hoofdstuk1");
+  },
+  afVerloren(){
+    S.munten += 6; S.eer = Math.max(0,S.eer-1);
+    fluister("De karavaan naar Beversluis werd bij de Zwarte Ley beroofd, ondanks de ridder die vooraan reed.",2);
+    schrijf("Kon niet voorkomen dat de karavaan bij de Zwarte Ley een deel van de vracht verloor.",2);
+    ga("hoofdstuk1");
+  }
+};
+
+const DIEVEN_DUEL_CTX = {
+  plaatId:"steeg",
+  kop:"Een steeg achter de graanmarkt", titel:"De schout wijst een naam",
+  vijandLabel:"De dief", vijandInfo:"vlug, geen harnas",
+  raadFluisteraar:"Je eigen adem, want niemand anders is dichtbij",
+  gewonnenTekst:[
+    "Hij rent zich vast in een blinde muur en jij bent sneller op adem dan hij.",
+    "De schout betaalt zonder te glimlachen. Voor hem is een gevangen dief een rekensom, geen verhaal."
+  ],
+  verlorenTekst:[
+    "Hij duikt onder je arm door en is over het dak voordat je overeind staat.",
+    "De schout haalt zijn schouders op. «Volgende week weer een dief,» zegt hij. «Er zijn er genoeg.»"
+  ],
+  afGewonnen(){
+    S.munten += 12; S.eer += 1;
+    schrijf("Ving een dief in de stegen achter de graanmarkt van Beversluis, in opdracht van de schout.",2);
+    ga("hoofdstuk1");
+  },
+  afVerloren(){
+    S.eer = Math.max(0,S.eer-1);
+    schrijf("Liet een dief ontsnappen in de stegen achter de graanmarkt.",2);
+    ga("hoofdstuk1");
+  }
+};
+
+function duelStart(ctx){
   duel = {
+    ctx: ctx || PROLOOG_DUEL_CTX,
     houding: 4,
     vijand: 4,
     kracht: uithouding(),
@@ -521,6 +825,12 @@ function duelStart(){
   if(v === "verrassing"){ duel.vijand = 3; duel.kracht += 1; duel.log.push({t:"Hij herkent je niet als gevaar. Dat duurt één slag.",k:"goed"}); }
   if(v === "donker"){ duel.log.push({t:"Het donker verbergt jullie beiden even goed.",k:""}); }
   if(S.vlaggen.vermoeid) duel.kracht -= 2;
+  delete S.vlaggen.voordeel;
+  delete S.vlaggen.vermoeid;
+  if(S.manschappen.length){
+    duel.vijand = Math.max(1, duel.vijand - 1);
+    duel.log.push({t:"Twee van je mannen dekken je rug vanaf de rand van het pad.",k:"goed"});
+  }
   duelRaad();
 }
 
@@ -575,33 +885,23 @@ function duelBeat(mijn){
 }
 
 function duelAf(){
-  if(duel.klaar === "gewonnen"){
-    S.eer += 2;
-    schrijf("Nam bij Vier Eiken eigenhandig de rover gevangen die drie reizigers had beroofd.",2);
-    if(!S.kist.includes("gevechtspak")) S.kist.push("gevechtspak");
-    duel = null;
-    ga("sterfbed");
-  } else {
-    // Geen game over in de proloog: Van Weel grijpt in, en dat kost hem.
-    S.vlaggen.gerlof_greep_in = true;
-    schrijf("Werd bij Vier Eiken van de grond geraapt door Gerlof van Weel, die daarbij het mes ving.",2);
-    if(!S.kist.includes("gevechtspak")) S.kist.push("gevechtspak");
-    duel = null;
-    ga("sterfbed");
-  }
+  const ctx = duel.ctx;
+  const gewonnen = duel.klaar === "gewonnen";
+  duel = null;
+  if(gewonnen) ctx.afGewonnen(); else ctx.afVerloren();
 }
 
 /* ---------------------------------------------------------------------
    7. NAVIGATIE
    --------------------------------------------------------------------- */
-function ga(id){
+function ga(id, duelCtx){
   if(id === "uitrusting_les"){
     S.vlaggen.les_uitrusting = true;
     if(!S.kist.includes("gevechtspak")) S.kist.push("gevechtspak");
     S.scene = "uitrusting_les";
     S.weergave = "uitrusting";
   } else if(id === "duel"){
-    S.scene = "duel"; S.weergave = "verhaal"; duelStart();
+    S.scene = "duel"; S.weergave = "verhaal"; duelStart(duelCtx);
   } else {
     S.scene = id; S.weergave = "verhaal";
   }
@@ -610,9 +910,10 @@ function ga(id){
 
 function kies(sceneId, index){
   const k = SCENES[sceneId].keuzes[index];
-  if(k.doe) k.doe();
+  const overschrijving = k.doe ? k.doe() : undefined;
   bewaar();
-  ga(k.naar);
+  if(k.naar === "duel" && k.duelCtx) ga("duel", typeof k.duelCtx === "function" ? k.duelCtx() : k.duelCtx);
+  else ga(overschrijving || k.naar);
 }
 
 /* ---------------------------------------------------------------------
@@ -636,10 +937,9 @@ function toonVerhaal(){
     h += `<hr class="regel">${zegelSvg(S.vlaggen.zegelnieuw)}`;
     S.vlaggen.zegelnieuw = false;
     h += `<p class="label" style="text-align:center;margin-top:.6rem">Renze Roodbaard · eer ${S.eer} · ${S.munten} penningen</p>`;
-    h += `<hr class="regel"><p class="label">Nog te schrijven</p>
+    h += `<hr class="regel"><p class="label">Hoofdstuk 1</p>
       <div class="keuzes">
-        ${["Spionage voor de kanselier","Reizigers begeleiden over de Zwarte Ley","Dieven vangen voor de schout","Nemen wat niet gegeven wordt"]
-          .map(t=>`<button class="keuze" disabled style="opacity:.6;border-left-color:var(--perkament-schaduw)">${t}<small>Volgend hoofdstuk.</small></button>`).join("")}
+        <button class="keuze" onclick="ga('hoofdstuk1')">Naar Beversluis<small>Spionage, karavanen, dieven — en de weg die je niet zou moeten kiezen.</small></button>
       </div>`;
     h += `<p style="margin-top:1rem"><button class="knop knop--stil" onclick="opnieuw()">Begin een nieuwe kroniek</button></p>`;
   } else if(sc.keuzes){
@@ -655,17 +955,18 @@ function toonVerhaal(){
 
 function toonDuel(){
   if(duel === null) duelStart();
-  let h = `<article class="blad">${plaat("duel")}
-    <p class="kop">Vier Eiken, tussen de wortels</p><h1>Het duel</h1>`;
+  const ctx = duel.ctx;
+  let h = `<article class="blad">${plaat(ctx.plaatId||"duel")}
+    <p class="kop">${ctx.kop}</p><h1>${ctx.titel}</h1>`;
 
   if(!duel.klaar){
     h += `<div class="tegen">
       <div><span class="label">Jij</span><div class="balk"><i style="width:${duel.houding/4*100}%"></i></div>
         <span class="cijfers" style="font-size:.8rem">kracht ${Math.max(0,duel.kracht)}</span></div>
-      <div><span class="label">De rover</span><div class="balk"><i style="width:${Math.max(0,duel.vijand)/4*100}%"></i></div>
-        <span class="cijfers" style="font-size:.8rem">mes, kort bereik</span></div>
+      <div><span class="label">${ctx.vijandLabel}</span><div class="balk"><i style="width:${Math.max(0,duel.vijand)/4*100}%"></i></div>
+        <span class="cijfers" style="font-size:.8rem">${ctx.vijandInfo}</span></div>
     </div>`;
-    h += `<p class="raad">Van Weel, halfluid: «${duel.raad}.»</p>`;
+    h += `<p class="raad">${ctx.raadFluisteraar}: «${duel.raad}.»</p>`;
     h += duel.log.map(l=>`<p class="beat" style="border-left-color:${l.k==="slecht"?"var(--zegel)":"var(--inkt-bleek)"}">${l.t}</p>`).join("");
     h += `<hr class="regel"><div class="keuzes">
       <button class="keuze" onclick="duelBeat('stoot')">Stoot<small>Verslaat binden. Kost twee kracht.</small></button>
@@ -673,13 +974,9 @@ function toonDuel(){
       <button class="keuze" onclick="duelBeat('wijken')">Wijken<small>Verslaat de stoot. Kost geen kracht.</small></button>
     </div>`;
   } else if(duel.klaar === "gewonnen"){
-    h += `<p>Hij laat het mes vallen voordat je hem raakt. Dat doet iemand die dit vaker heeft gedaan en die weet wanneer het over is.</p>
-      <p>Je bindt hem met je eigen gordel. Achter je zegt Van Weel: «Goed.» En daarna niets meer, wat je pas veel later begrijpt.</p>
-      <hr class="regel"><button class="knop" onclick="duelAf()">Verder</button>`;
+    h += ctx.gewonnenTekst.map(p=>`<p>${p}</p>`).join("") + `<hr class="regel"><button class="knop" onclick="duelAf()">Verder</button>`;
   } else {
-    h += `<p>Je ligt in de bladeren en de lucht wil niet naar binnen. Boven je gaat iets snel en zwaar, en dan is het stil.</p>
-      <p>Van Weel staat over je heen met de rover onder zijn knie. Hij hijgt door zijn tanden. «Sta op,» zegt hij. «Bind hem.» Er zit iets donkers onder zijn kolder, links.</p>
-      <hr class="regel"><button class="knop" onclick="duelAf()">Verder</button>`;
+    h += ctx.verlorenTekst.map(p=>`<p>${p}</p>`).join("") + `<hr class="regel"><button class="knop" onclick="duelAf()">Verder</button>`;
   }
   return h + `</article>`;
 }
@@ -731,6 +1028,94 @@ function trekAan(laag, id){
   S.dracht[laag] = id === "null" ? null : id;
   if(id === null) S.dracht[laag] = null;
   bewaar(); render();
+}
+
+/* ---------------------------------------------------------------------
+   8b. LEGER — dorpelingen werven, trainen, kleden en bewapenen
+   --------------------------------------------------------------------- */
+function legerWerf(){
+  const gebruikt = new Set(S.manschappen.map(m=>m.naam));
+  const beschikbaar = DORPSNAMEN.filter(n=>!gebruikt.has(n));
+  if(S.munten < 6 || !beschikbaar.length) return;
+  S.munten -= 6;
+  const naam = beschikbaar[Math.floor(Math.random()*beschikbaar.length)];
+  S.manschappen.push({naam, opleiding:0, kleding:"eigen_kleren", wapen:"geen"});
+  schrijf(`Wierf ${naam}, een dorpeling, voor het leger.`,2);
+  bewaar(); render();
+}
+
+function legerTrain(i){
+  const m = S.manschappen[i];
+  const kosten = OPLEIDINGKOSTEN[m.opleiding];
+  if(kosten === undefined || S.munten < kosten) return;
+  S.munten -= kosten;
+  m.opleiding += 1;
+  bewaar(); render();
+}
+
+function legerKleed(i, id){
+  const m = S.manschappen[i];
+  const item = VOLGKLEDING[id];
+  if(m.kleding === id || S.munten < item.prijs) return;
+  S.munten -= item.prijs;
+  m.kleding = id;
+  bewaar(); render();
+}
+
+function legerBewapen(i, id){
+  const m = S.manschappen[i];
+  const item = VOLGWAPEN[id];
+  if(m.wapen === id || S.munten < item.prijs) return;
+  S.munten -= item.prijs;
+  m.wapen = id;
+  bewaar(); render();
+}
+
+function legerOntsla(i){
+  const m = S.manschappen[i];
+  schrijf(`Liet ${m.naam} gaan uit het leger.`,2);
+  S.manschappen.splice(i,1);
+  bewaar(); render();
+}
+
+function toonLeger(){
+  let h = `<article class="blad"><p class="kop">Beversluis, achter de stal</p><h1>Het leger van Renze Roodbaard</h1>
+    <p>Boeren zijn geen soldaten totdat je ze betaalt om het te worden. Elke man kost eerst een handdruk en een paar penningen, en daarna telkens meer om hem te trainen en te kleden.</p>
+    <div class="waarden">
+      <div class="waarde"><span class="label">Manschappen</span><b>${S.manschappen.length}</b></div>
+      <div class="waarde"><span class="label">Legerkracht</span><b>${legerkracht()}</b></div>
+    </div>
+    <hr class="regel">
+    <button class="knop" ${S.munten<6?"disabled style=opacity:.5":""} onclick="legerWerf()">Werf een dorpeling — 6 penningen</button>`;
+
+  if(!S.manschappen.length){
+    h += `<p class="cijfers" style="margin-top:.6rem">Nog niemand in dienst.</p>`;
+  } else {
+    h += `<hr class="regel"><div class="lagen">`;
+    S.manschappen.forEach((m,i)=>{
+      const volgendeKost = OPLEIDINGKOSTEN[m.opleiding];
+      h += `<div class="laag" style="grid-template-columns:1fr">
+        <div>
+          <div class="naam">${m.naam} <span class="cijfers">— ${OPLEIDINGEN[m.opleiding]}</span></div>
+          <div class="cijfers">${VOLGKLEDING[m.kleding].naam} · ${VOLGWAPEN[m.wapen].naam}</div>
+          <div class="kies" style="margin-top:.35rem">
+            ${volgendeKost!==undefined
+              ? `<button ${S.munten<volgendeKost?"disabled":""} onclick="legerTrain(${i})">Train — ${volgendeKost}p → ${OPLEIDINGEN[m.opleiding+1]}</button>`
+              : `<span class="cijfers">Volledig doorgehard</span>`}
+          </div>
+          <div class="kies">
+            ${Object.entries(VOLGKLEDING).map(([id,it])=>`<button aria-pressed="${id===m.kleding}" ${(S.munten<it.prijs&&id!==m.kleding)?"disabled":""} onclick="legerKleed(${i},'${id}')">${it.naam}${it.prijs?` (${it.prijs}p)`:""}</button>`).join("")}
+          </div>
+          <div class="kies">
+            ${Object.entries(VOLGWAPEN).map(([id,it])=>`<button aria-pressed="${id===m.wapen}" ${(S.munten<it.prijs&&id!==m.wapen)?"disabled":""} onclick="legerBewapen(${i},'${id}')">${it.naam}${it.prijs?` (${it.prijs}p)`:""}</button>`).join("")}
+          </div>
+          <div class="kies"><button onclick="legerOntsla(${i})">Laat gaan</button></div>
+        </div>
+      </div>`;
+    });
+    h += `</div>`;
+  }
+  return h + `</article>`;
 }
 
 function zegelSvg(nieuw){
@@ -789,7 +1174,12 @@ function toonVel(){
       <div class="waarde"><span class="label">Ontzag</span><b>${ontzag()}</b></div>
       <div class="waarde"><span class="label">Onopvallend</span><b>${onopvallend()}</b></div>
       <div class="waarde"><span class="label">Manschappen</span><b>${S.manschappen.length}</b></div>
+      <div class="waarde"><span class="label">Legerkracht</span><b>${legerkracht()}</b></div>
     </div>`;
+
+  if(S.gezocht > 0){
+    h += `<p class="fluister" style="margin-top:.6rem">Er wordt naar je gezocht bij het kruispunt (${S.gezocht}×). De schout heeft nog geen gezicht bij de naam, maar dat duurt niet eeuwig.</p>`;
+  }
 
   if(S.fluisters.length){
     h += `<hr class="regel"><p class="label">Wat er gefluisterd wordt</p>
@@ -858,7 +1248,8 @@ const RIEM = [
   {id:"verhaal",   naam:"Verhaal",  icoon:`<svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h6"/></svg>`},
   {id:"kaart",     naam:"Kaart",    icoon:`<svg viewBox="0 0 24 24"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/></svg>`},
   {id:"vel",       naam:"Kaart van Renze", icoon:`<svg viewBox="0 0 24 24"><path d="M6 3h12v18H6z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>`},
-  {id:"uitrusting",naam:"Uitrusting",icoon:`<svg viewBox="0 0 24 24"><path d="M9 3h6l3 4-2 3 2 3-3 2v6H9v-6l-3-2 2-3-2-3z"/></svg>`}
+  {id:"uitrusting",naam:"Uitrusting",icoon:`<svg viewBox="0 0 24 24"><path d="M9 3h6l3 4-2 3 2 3-3 2v6H9v-6l-3-2 2-3-2-3z"/></svg>`},
+  {id:"leger",     naam:"Leger",     icoon:`<svg viewBox="0 0 24 24"><path d="M4 20l3-9 5 5 3-11 5 15"/><circle cx="8" cy="9" r="2"/></svg>`}
 ];
 
 function render(){
@@ -867,6 +1258,7 @@ function render(){
     w === "kaart"      ? toonKaart() :
     w === "vel"        ? toonVel() :
     w === "uitrusting" ? toonUitrusting() :
+    w === "leger"      ? toonLeger() :
                          toonVerhaal();
   document.getElementById("riem").innerHTML = RIEM.map(t=>
     `<button aria-current="${t.id===w}" onclick="naar('${t.id}')">${t.icoon}<span>${t.naam}</span></button>`
@@ -877,7 +1269,10 @@ function naar(id){
   S.weergave = id; bewaar(); render();
 }
 function opnieuw(){
-  if(!confirm("De hele kroniek wissen en opnieuw beginnen?")) return;
+  let door = true;
+  try { door = confirm("De hele kroniek wissen en opnieuw beginnen?"); }
+  catch(e){ door = true; } // sommige voorvertoningen (sandboxed iframes) staan confirm() niet toe
+  if(!door) return;
   OPSLAG.wis(); S = nieuweStaat(); duel = null; bewaar(); render(); window.scrollTo({top:0});
 }
 
