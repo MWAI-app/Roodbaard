@@ -153,20 +153,29 @@ button{font:inherit;cursor:pointer}
 .raad{font-family:var(--hand);color:var(--inkt-tweede)}
 
 /* ---------- Kaart ---------- */
-.kaart{width:100%;height:auto;display:block}
+.kaart{width:100%;height:100%;display:block}
 .kaart text{font-family:var(--kapitaal);font-size:26px;fill:var(--inkt);letter-spacing:.08em}
 .kaart .mist{fill:var(--perkament-diep);opacity:.94}
 .plattegrond{width:100%;height:auto;display:block;margin:.7rem 0 0;border:1px solid var(--perkament-schaduw)}
-.kaart-wrap{position:relative}
-.hotspot{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:.2rem;background:none;border:0;padding:.3rem;margin:0;cursor:pointer;text-align:center}
-.hotspot .merk{width:1.7rem;height:1.7rem;border-radius:50%;border:2px solid #7d1f1a;background:rgba(242,230,200,.6);display:grid;place-items:center;box-shadow:0 1px 3px rgba(0,0,0,.4);transition:transform .15s,background .15s}
-.hotspot .merk svg{width:62%;height:62%}
-.hotspot .merk svg path{stroke:#7d1f1a;stroke-width:2.6;stroke-linecap:round}
-.hotspot .label{font-family:var(--kapitaal);font-size:.62rem;letter-spacing:.05em;text-transform:uppercase;color:var(--inkt);background:rgba(242,230,200,.88);padding:.1rem .4rem;white-space:nowrap;border:1px solid var(--perkament-schaduw)}
-.hotspot:hover .merk,.hotspot:focus-visible .merk{background:rgba(125,31,26,.2);transform:scale(1.14)}
-.hotspot--dicht{cursor:default}
-.hotspot--dicht .merk{opacity:.5;border-style:dashed}
-.hotspot--dicht .label{opacity:.6}
+.kaart-viewport{position:relative;overflow:hidden;aspect-ratio:1448/1086;background:#d8c493;border:1px solid var(--perkament-schaduw);touch-action:pan-y;cursor:grab}
+.kaart-viewport--gezoomd{touch-action:none;cursor:grab}
+.kaart-viewport--sleept{cursor:grabbing}
+.kaart-zoom{position:absolute;top:0;left:0;width:100%;height:100%;transform-origin:0 0}
+.kaart-hotspots{position:absolute;inset:0;pointer-events:none}
+/* Positie wordt door JS in px gezet (fx/fy volgen de zoom); de grootte zelf
+   blijft vast, zodat markers relatief kleiner ogen naarmate je verder inzoomt. */
+.hotspot{position:absolute;pointer-events:auto;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:.12rem;background:none;border:0;padding:.3rem;margin:0;cursor:pointer;text-align:center;z-index:2}
+.hotspot .merk{width:.9rem;height:.9rem;border-radius:50%;border:1.5px solid rgba(125,31,26,.7);background:rgba(242,230,200,.4);display:grid;place-items:center;box-shadow:0 1px 2px rgba(0,0,0,.3);transition:transform .15s,background .15s,border-color .15s}
+.hotspot .merk svg{width:55%;height:55%}
+.hotspot .merk svg path{stroke:#7d1f1a;stroke-width:3;stroke-linecap:round}
+.hotspot .label{font-family:var(--kapitaal);font-size:.56rem;letter-spacing:.04em;text-transform:uppercase;color:var(--inkt);background:rgba(242,230,200,.5);padding:.04rem .32rem;white-space:nowrap;border:1px solid rgba(157,138,93,.4);opacity:.7;transition:opacity .15s,background .15s}
+.hotspot:hover .merk,.hotspot:focus-visible .merk{background:rgba(125,31,26,.3);border-color:#7d1f1a;transform:scale(1.3)}
+.hotspot:hover .label,.hotspot:focus-visible .label{opacity:1;background:rgba(242,230,200,.94)}
+.hotspot--dicht .merk{opacity:.4;border-style:dashed}
+.hotspot--dicht .label{opacity:.4}
+.kaart-knoppen{position:absolute;right:.5rem;bottom:.5rem;display:flex;flex-direction:column;gap:.3rem;z-index:3}
+.kaart-knoppen button{width:1.9rem;height:1.9rem;border-radius:50%;border:1px solid var(--perkament-schaduw);background:rgba(242,230,200,.88);color:var(--inkt);font-size:1rem;line-height:1;display:grid;place-items:center;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.kaart-knoppen button:active{background:rgba(125,31,26,.15)}
 .kaart-wenk{margin:.55rem 0 0;font-size:.82rem;color:var(--inkt-bleek)}
 
 /* ---------- Onderriem ---------- */
@@ -1485,17 +1494,17 @@ function kaartHotspots(){
   for(const id in PLAATSEN){
     if(id === S.locatie) continue;
     const plaats = PLAATSEN[id];
-    const links = plaats.x/1448*100, top = plaats.y/1086*100;
+    const fx = plaats.x/1448, fy = plaats.y/1086;
     const opties = ROUTES[routeKey(S.locatie, id)];
     const kruisje = `<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>`;
     if(!opties){
       h += `<button class="hotspot hotspot--dicht" type="button" disabled
-        style="left:${links}%;top:${top}%" title="Nog geen route uitgestippeld naar ${plaats.naam}.">
+        data-fx="${fx}" data-fy="${fy}" title="Nog geen route uitgestippeld naar ${plaats.naam}.">
         <span class="merk">${kruisje}</span><span class="label">${plaats.naam}</span>
       </button>`;
     } else {
       h += `<button class="hotspot" type="button" onclick="reisKiezen('${id}')"
-        style="left:${links}%;top:${top}%" title="Reis naar ${plaats.naam} — ${opties.length} route${opties.length>1?"s":""} bekend.">
+        data-fx="${fx}" data-fy="${fy}" title="Reis naar ${plaats.naam} — ${opties.length} route${opties.length>1?"s":""} bekend.">
         <span class="merk">${kruisje}</span><span class="label">${plaats.naam}</span>
       </button>`;
     }
@@ -1506,7 +1515,15 @@ function kaartHotspots(){
 function toonKaartReizen(){
   const hier = PLAATSEN[S.locatie];
   let h = `<article class="blad"><p class="kop">Je bevindt je in ${hier.naam}</p><h1>Kaart</h1>
-    <div class="kaart-wrap">${kaartSvg()}${(!reis || reis.fase !== "onderweg") ? kaartHotspots() : ""}</div>`;
+    <div class="kaart-viewport" id="kaartViewport">
+      <div class="kaart-zoom" id="kaartZoom">${kaartSvg()}</div>
+      <div class="kaart-hotspots" id="kaartHotspots">${(!reis || reis.fase !== "onderweg") ? kaartHotspots() : ""}</div>
+      <div class="kaart-knoppen">
+        <button type="button" onclick="kaartZoomStap(1)" aria-label="Inzoomen">+</button>
+        <button type="button" onclick="kaartZoomStap(-1)" aria-label="Uitzoomen">−</button>
+        <button type="button" onclick="kaartZoomReset()" aria-label="Kaart passend maken">⤢</button>
+      </div>
+    </div>`;
 
   if(reis && reis.fase === "onderweg"){
     h += `<p class="cijfers" style="margin-top:.6rem">Etappe ${reis.etappe} van ${reis.route.etappes} — onderweg naar ${PLAATSEN[reis.naar].naam}, ${reis.route.naam.toLowerCase()}.</p>`;
@@ -1525,6 +1542,123 @@ function toonKaartReizen(){
   if(reis && reis.fase === "route") h += tussendoorRoute();
   if(reis && reis.fase === "onderweg" && reis.gebeurtenis) h += tussendoorGebeurtenis();
   return h;
+}
+
+/* ---------------------------------------------------------------------
+   5d. IN- EN UITZOOMEN OP DE KAART — pan/zoom binnen de kaart zelf, zodat
+   plekmarkers een vaste grootte houden en relatief kleiner ogen naarmate
+   je verder inzoomt (in plaats van mee te schalen met de kaart).
+   --------------------------------------------------------------------- */
+let kz = {zoom:1, panX:0, panY:0, min:1, max:4};
+
+function kaartToepassenTransform(){
+  const vp = document.getElementById("kaartViewport");
+  const laag = document.getElementById("kaartZoom");
+  if(!vp || !laag) return;
+  const w = vp.clientWidth, h = vp.clientHeight;
+  kz.panX = Math.min(0, Math.max(w - w*kz.zoom, kz.panX));
+  kz.panY = Math.min(0, Math.max(h - h*kz.zoom, kz.panY));
+  laag.style.transform = `translate(${kz.panX}px, ${kz.panY}px) scale(${kz.zoom})`;
+  vp.classList.toggle("kaart-viewport--gezoomd", kz.zoom > kz.min);
+  document.querySelectorAll("#kaartHotspots .hotspot").forEach(btn=>{
+    const fx = parseFloat(btn.dataset.fx), fy = parseFloat(btn.dataset.fy);
+    btn.style.left = (fx*w*kz.zoom + kz.panX) + "px";
+    btn.style.top  = (fy*h*kz.zoom + kz.panY) + "px";
+  });
+}
+
+function kaartZoomOm(px, py, nieuweZoom){
+  nieuweZoom = Math.min(kz.max, Math.max(kz.min, nieuweZoom));
+  const mapX = (px - kz.panX) / kz.zoom, mapY = (py - kz.panY) / kz.zoom;
+  kz.panX = px - mapX*nieuweZoom;
+  kz.panY = py - mapY*nieuweZoom;
+  kz.zoom = nieuweZoom;
+}
+
+function kaartZoomStap(richting){
+  const vp = document.getElementById("kaartViewport");
+  if(!vp) return;
+  kaartZoomOm(vp.clientWidth/2, vp.clientHeight/2, kz.zoom * (richting > 0 ? 1.5 : 1/1.5));
+  kaartToepassenTransform();
+}
+
+function kaartZoomReset(){
+  kz = {zoom:1, panX:0, panY:0, min:1, max:4};
+  kaartToepassenTransform();
+}
+
+function kaartInitZoom(){
+  const vp = document.getElementById("kaartViewport");
+  if(!vp) return;
+  kz = {zoom:1, panX:0, panY:0, min:1, max:4};
+  kaartToepassenTransform();
+
+  const pointers = new Map();
+  let sleept = false, sleepStart = null, vorigeAfstand = null, vorigCentrum = null;
+  const afstand = (a,b) => Math.hypot(a.x-b.x, a.y-b.y);
+  const centrum = (a,b) => ({x:(a.x+b.x)/2, y:(a.y+b.y)/2});
+
+  vp.addEventListener("pointerdown", e=>{
+    if(e.target.closest(".hotspot, .kaart-knoppen button")) return;
+    try{ vp.setPointerCapture(e.pointerId); }catch(err){}
+    pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+    if(pointers.size === 1){
+      sleept = true;
+      sleepStart = {x:e.clientX, y:e.clientY, panX:kz.panX, panY:kz.panY};
+      vp.classList.add("kaart-viewport--sleept");
+    } else if(pointers.size === 2){
+      sleept = false;
+      const [a,b] = [...pointers.values()];
+      vorigeAfstand = afstand(a,b);
+      vorigCentrum = centrum(a,b);
+    }
+  });
+
+  vp.addEventListener("pointermove", e=>{
+    if(!pointers.has(e.pointerId)) return;
+    pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+    if(pointers.size === 1 && sleept && kz.zoom > kz.min){
+      e.preventDefault();
+      const p = pointers.get(e.pointerId);
+      kz.panX = sleepStart.panX + (p.x - sleepStart.x);
+      kz.panY = sleepStart.panY + (p.y - sleepStart.y);
+      kaartToepassenTransform();
+    } else if(pointers.size === 2){
+      e.preventDefault();
+      const [a,b] = [...pointers.values()];
+      const rect = vp.getBoundingClientRect();
+      const nieuweAfstand = afstand(a,b);
+      const nieuwCentrum = centrum(a,b);
+      kaartZoomOm(nieuwCentrum.x-rect.left, nieuwCentrum.y-rect.top, kz.zoom * (nieuweAfstand/vorigeAfstand));
+      kz.panX += nieuwCentrum.x - vorigCentrum.x;
+      kz.panY += nieuwCentrum.y - vorigCentrum.y;
+      kaartToepassenTransform();
+      vorigeAfstand = nieuweAfstand;
+      vorigCentrum = nieuwCentrum;
+    }
+  });
+
+  function loslaten(e){
+    pointers.delete(e.pointerId);
+    if(pointers.size < 2){ vorigeAfstand = null; vorigCentrum = null; }
+    if(pointers.size === 0){ sleept = false; vp.classList.remove("kaart-viewport--sleept"); }
+  }
+  vp.addEventListener("pointerup", loslaten);
+  vp.addEventListener("pointercancel", loslaten);
+  vp.addEventListener("pointerleave", loslaten);
+
+  vp.addEventListener("wheel", e=>{
+    e.preventDefault();
+    const rect = vp.getBoundingClientRect();
+    kaartZoomOm(e.clientX-rect.left, e.clientY-rect.top, kz.zoom * (e.deltaY < 0 ? 1.2 : 1/1.2));
+    kaartToepassenTransform();
+  }, {passive:false});
+
+  vp.addEventListener("dblclick", e=>{
+    const rect = vp.getBoundingClientRect();
+    kaartZoomOm(e.clientX-rect.left, e.clientY-rect.top, kz.zoom < kz.max ? Math.min(kz.max, kz.zoom*2) : kz.min);
+    kaartToepassenTransform();
+  });
 }
 
 function tussendoorRoute(){
@@ -1661,6 +1795,7 @@ function render(){
   document.getElementById("riem").innerHTML = RIEM.map(t=>
     `<button aria-current="${t.id===w}" onclick="naar('${t.id}')">${t.icoon}<span>${t.naam}</span></button>`
   ).join("");
+  if(w === "kaart") kaartInitZoom();
 }
 function naar(id){
   if(S.scene === "uitrusting_les" && id !== "uitrusting"){ S.weergave = id; render(); return; }
