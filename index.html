@@ -273,6 +273,7 @@ const ASSETS = {
   galgenboom:  "assets/scene/galgenboom.webp",
   wegkapel:    "assets/scene/wegkapel.webp",
   wegkapel_leeg: "assets/scene/wegkapel-leeg.webp",
+  wachtpost: "assets/scene/wachtpost.webp",
   smidse_beversluis: "assets/scene/smidse-beversluis.webp",
   smidse:      "assets/scene/smidse.webp",
   vier_eiken:  "assets/scene/vier-eiken.webp",
@@ -385,6 +386,11 @@ const ETSEN = {
     <path d="M40 70V50h16v20M64 70V50h16v20" opacity=".6"/>
     <path d="M96 58c4-6 4-12 0-16-2 4-6 4-8 2 0 6 2 10 8 14z" opacity=".7"/>
     <path d="M8 74h104" stroke-width=".8" opacity=".5"/></g></svg>`,
+  wachtpost:`<svg viewBox="0 0 120 80"><g stroke="#241a10" fill="none" stroke-width="1.6" stroke-linecap="round">
+    <path d="M40 74V30M80 74V26"/><path d="M40 30l40-4"/><path d="M34 46h50M36 60h48" opacity=".6"/>
+    <path d="M36 26h48v18H36z" opacity=".7"/>
+    <path d="M50 40c-2 2-2 6 0 8" opacity=".5"/>
+    <path d="M8 76h104" stroke-width=".8" opacity=".5"/></g></svg>`,
   korte_piek:`<svg viewBox="0 0 60 60"><g stroke="#241a10" fill="none" stroke-width="1.7" stroke-linecap="round"><path d="M30 48V18"/><path d="M30 18l-6 10h12z" fill="#241a10" stroke="none"/><path d="M26 48h8" stroke-width="2.4"/></g></svg>`,
   smidshandbijl:`<svg viewBox="0 0 60 60"><g stroke="#241a10" fill="none" stroke-width="1.7" stroke-linecap="round"><path d="M20 46l16-16"/><path d="M36 30c5-7 13-9 15-3s-3 13-9 13-9-4-6-10z"/><path d="M18 48l5-5" stroke-width="2.8"/></g></svg>`,
   eenvoudig_zwaard:`<svg viewBox="0 0 60 60"><g stroke="#241a10" fill="none" stroke-width="1.7" stroke-linecap="round"><path d="M30 48V14"/><path d="M21 21h18"/><path d="M27 48h6" stroke-width="2.4"/></g></svg>`,
@@ -964,19 +970,35 @@ const GEB_DRASSIGE_OVERSTEEK = {
   }
 };
 
+/* De zwerver bij de wachtpost spreekt in losse woorden, geen zinnen, en
+   vertelt per bezoek hoogstens één flard — pas nadat hij eenmalig is
+   gepaaid met brood en drank (geen geld, dat begrijpt hij niet). Nieuwe
+   flarden komen hier later bij; ZWERVER_FRAGMENTEN is bewust een losse,
+   uitbreidbare lijst. */
+const ZWERVER_FRAGMENTEN = [
+  {id:"galg_vier_eiken", tekst:"«Galg,» zegt hij. Een vinger naar het westen. Lang niets. «Vier Eiken.» Weer niets. «Boze mannen.»"},
+  {id:"maria_ruiters", tekst:"«Maria,» zegt hij, en zijn handen vormen iets rond dat er niet is. «Mooi.» Een stilte die te lang duurt. «Tien ruiters.»"}
+];
+
 const GEB_WACHTPOST = {
-  type:"Je ziet",
-  tekst:"de oude wachtpost, een verweerde houten toren op palen, half ingestort. Er brandt geen licht, maar de ladder hangt neer.",
-  negerenTekst:"Een verlaten wachtpost is niemands zaak. Je laat hem achter je.",
+  type:"Bij de wachtpost",
+  tekst:"zit de schuwe man weer stil in de schaduw van de kapotte toren en kijkt je aan zonder te bewegen.",
+  negerenTekst:"Je knikt. Hij niet. Je rijdt door.",
   stilstaan(){
-    if(Math.random() < .45){
-      const vondst = 3 + Math.floor(Math.random()*6);
-      S.munten += vondst;
-      return `Boven, tussen kapotte planken, vind je een vergeten proviandkist — ${vondst} penningen aan ruilwaar en een half brood dat de muizen nog niet hadden. Iemand hield hier ooit de weg in de gaten.`;
+    if(!S.vlaggen.zwerver_vertrouwen){
+      if(S.vlaggen.heeft_proviand){
+        S.vlaggen.heeft_proviand = false;
+        S.vlaggen.zwerver_vertrouwen = true;
+        return "Je legt het brood en de drank neer, een armlengte bij hem vandaan, en stapt terug. Het duurt lang. Dan is het weg, en kijkt hij je voor het eerst echt aan.";
+      }
+      return "Hij trekt zich terug in de schaduw zodra je dichterbij komt. Je hebt niets bij je dat hij vertrouwt.";
     }
-    const verlies = Math.min(S.munten, 2 + Math.floor(Math.random()*4));
-    S.munten -= verlies;
-    return `De ladder breekt onder je op de derde sport. Je valt niet hoog, maar hard genoeg om je buidel te scheuren — ${verlies} penningen tussen het gras kwijt die je niet meer terugvindt.`;
+    const gehoord = S.vlaggen.zwerver_fragmenten || [];
+    const onbekend = ZWERVER_FRAGMENTEN.filter(f=>!gehoord.includes(f.id));
+    if(!onbekend.length) return "Hij kijkt je aan, kent je inmiddels. Niets nieuws vandaag.";
+    const f = onbekend[0];
+    S.vlaggen.zwerver_fragmenten = [...gehoord, f.id];
+    return f.tekst;
   }
 };
 
@@ -1025,6 +1047,7 @@ const ROUTES = {
       kenmerken:["Zeer riskant","Modderig, amper begaanbaar","Raven boven de galgenboom"],
       vergrendeld(){ return S.vlaggen.paard_schuwt_galgenpad ? "Je paard weigert dit pad nog eens te nemen. Wat je ook probeert." : null; },
       passeertGalgenboom:true,
+      passeertWachtpost:true,
       gebeurtenissen:[GEB_RAVEN, GEB_DRASSIGE_OVERSTEEK, GEB_WACHTPOST]
     }
   ],
@@ -1034,6 +1057,7 @@ const ROUTES = {
       omschrijving:"Om Vier Eiken heen, door het rieland, tot de galgenboom en de wachtpost. Een omweg zonder dorpen.",
       kenmerken:["Riskant","Drassig rieland","Geen dorpen onderweg"],
       passeertGalgenboom:true,
+      passeertWachtpost:true,
       gebeurtenissen:[GEB_RIETVELD, GEB_WACHTPOST]
     }
   ]
@@ -1100,6 +1124,7 @@ function reisEtappe(){
   reis.galgenboom = null;
   reis.wegkapel = false;
   reis.wegkapelLeeg = false;
+  reis.wachtpost = false;
   if(reis.etappe > reis.route.etappes){
     const van = PLAATSEN[reis.van].naam, naar = PLAATSEN[reis.naar].naam;
     schrijf(`Reisde van ${van} naar ${naar} — ${reis.route.naam}.`,2);
@@ -1121,6 +1146,11 @@ function reisEtappe(){
   if(reis.route.passeertWegkapel && S.vlaggen.wegkapel_lot && S.vlaggen.wegkapel_lot !== "gestolen"
      && !S.vlaggen.wegkapel_leeg_gezien && reis.etappe === 1){
     reis.wegkapelLeeg = true;
+    bewaar(); render();
+    return;
+  }
+  if(reis.route.passeertWachtpost && !S.vlaggen.zwerver_gezien && reis.etappe === 2){
+    reis.wachtpost = true;
     bewaar(); render();
     return;
   }
@@ -1225,6 +1255,24 @@ function wegkapelLeegKiezen(keuze){
     reis.uitkomst = "Wat hier gebeurde, is niet meer te veranderen door ernaar te staren. Je rijdt door, en probeert niet te denken aan wie hier met zoveel paarden kwam voor zo weinig buit.";
   }
   reis.wegkapelLeeg = false;
+  bewaar(); render();
+}
+
+/* De wachtpost: eenmalige kennismaking met de schuwe zwerver. Pas als
+   hij proviand krijgt, wint hij vertrouwen — daarna vertelt hij bij elk
+   volgend bezoek (via GEB_WACHTPOST) hoogstens één flard. */
+function wachtpostKiezen(keuze){
+  S.vlaggen.zwerver_gezien = true;
+  if(keuze === "geven" && S.vlaggen.heeft_proviand){
+    S.vlaggen.heeft_proviand = false;
+    S.vlaggen.zwerver_vertrouwen = true;
+    schrijf("Won het vertrouwen van een schuwe zwerver bij de oude wachtpost, met brood en drank.",2);
+    reis.uitkomst = "Je legt het brood en de drank neer, een armlengte bij hem vandaan, en stapt terug. Het duurt lang. Dan is het weg, en kijkt hij je voor het eerst echt aan — geen woord nog, maar hij blijft, deze keer.";
+  } else {
+    schrijf("Zag een schuwe zwerver bij de oude wachtpost, maar liet hem met rust.",2);
+    reis.uitkomst = "Je rijdt door. In een plas, heel even, zie je hem weer tevoorschijn komen achter je.";
+  }
+  reis.wachtpost = false;
   bewaar(); render();
 }
 
@@ -1413,6 +1461,13 @@ function herbergMaaltijd(){
 function herbergLuisteren(){
   const tekst = HERBERG_GERUCHTEN[Math.floor(Math.random()*HERBERG_GERUCHTEN.length)];
   fluister(tekst, 1);
+  bewaar(); render();
+}
+function herbergProviand(){
+  if(S.munten < 5 || S.vlaggen.heeft_proviand) return;
+  S.munten -= 5;
+  S.vlaggen.heeft_proviand = true;
+  schrijf("Kocht brood en drank in de herberg om mee op reis te nemen.",2);
   bewaar(); render();
 }
 
@@ -1826,7 +1881,7 @@ function toonKaartReizen(){
 
   if(reis && reis.fase === "onderweg"){
     h += `<p class="cijfers" style="margin-top:.6rem">Etappe ${reis.etappe} van ${reis.route.etappes} — onderweg naar ${PLAATSEN[reis.naar].naam}, ${reis.route.naam.toLowerCase()}.</p>`;
-    if(!reis.gebeurtenis && !reis.galgenboom && !reis.wegkapel && !reis.wegkapelLeeg){
+    if(!reis.gebeurtenis && !reis.galgenboom && !reis.wegkapel && !reis.wegkapelLeeg && !reis.wachtpost){
       h += `<p style="margin:.3rem 0 0">${reis.uitkomst}</p>
         <p style="margin-top:.6rem"><button class="knop" onclick="reisVerder()">Rijd verder</button></p>`;
     }
@@ -1865,6 +1920,7 @@ function toonKaartReizen(){
   if(reis && reis.fase === "onderweg" && reis.galgenboom) h += tussendoorGalgenboom();
   else if(reis && reis.fase === "onderweg" && reis.wegkapel) h += tussendoorWegkapel();
   else if(reis && reis.fase === "onderweg" && reis.wegkapelLeeg) h += tussendoorWegkapelLeeg();
+  else if(reis && reis.fase === "onderweg" && reis.wachtpost) h += tussendoorWachtpost();
   else if(reis && reis.fase === "onderweg" && reis.gebeurtenis) h += tussendoorGebeurtenis();
   if(winkel === "smidse") h += tussendoorSmidse();
   if(winkel === "karavaan") h += tussendoorKaravaan();
@@ -2103,6 +2159,10 @@ function tussendoorHerberg(){
     <div class="keuzes" style="margin-top:.4rem">
       <button class="keuze" ${S.munten<3?"disabled":""} style="${S.munten<3?"opacity:.5":""}" onclick="herbergMaaltijd()">Een maaltijd en een kroes — 3 penningen<small>Warm eten, en een half uur waarin niemand iets van je wil.</small></button>
       <button class="keuze" onclick="herbergLuisteren()">Luister naar het nieuws.<small>Kost niets. Levert misschien iets op.</small></button>
+      ${S.vlaggen.heeft_proviand
+        ? `<button class="keuze" disabled style="opacity:.5;border-left-color:var(--perkament-schaduw)">Brood en drank om mee te nemen.<small>Je draagt al proviand.</small></button>`
+        : `<button class="keuze" ${S.munten<5?"disabled":""} style="${S.munten<5?"opacity:.5":""}" onclick="herbergProviand()">Brood en drank om mee te nemen — 5 penningen<small>Voor iemand onderweg die geen penningen wil, of niet vertrouwt.</small></button>`
+      }
     </div>
     <p style="margin-top:.8rem"><button class="knop knop--stil" onclick="winkelSluiten()">Weer verder.</button></p>
   </div></div>`;
@@ -2121,6 +2181,23 @@ function tussendoorStal(){
       <button class="keuze" ${S.munten<4?"disabled":""} style="${S.munten<4?"opacity:.5":""}" onclick="stalVerzorgen()">Laat hem verzorgen — 4 penningen<small>Water, haver, en iemand die zijn hoeven bekijkt.</small></button>
     </div>
     <p style="margin-top:.8rem"><button class="knop knop--stil" onclick="winkelSluiten()">Weer verder.</button></p>
+  </div></div>`;
+}
+
+function tussendoorWachtpost(){
+  const kanProviand = S.vlaggen.heeft_proviand;
+  return `<div class="overlay-achtergrond"><div class="overlay-blad">
+    <p class="kop">De wachtpost</p><h1>Iemand woont hier</h1>
+    ${plaat("wachtpost")}
+    <p>De toren is niet zomaar vervallen — hij is verlaten, sinds Beversluis de wacht hier jaren terugtrok. Leeg is hij niet. Tussen de kapotte planken beweegt iets, te snel voor een dier en te stil voor een mens: een gedaante, mager, in lagen verweerde stof, die zich terugtrekt zodra je kijkt.</p>
+    <p>Hij spreekt niet als je nadert. Hij verdwijnt.</p>
+    <div class="keuzes" style="margin-top:.4rem">
+      ${kanProviand
+        ? `<button class="keuze" onclick="wachtpostKiezen('geven')">Leg het brood en de drank neer.<small>Op afstand. Geen woord, geen beweging die hem opjaagt.</small></button>`
+        : `<button class="keuze" disabled style="opacity:.5;border-left-color:var(--perkament-schaduw)">Bied hem eten aan.<small>Je hebt niets bij je. De herberg verkoopt proviand om mee te nemen.</small></button>`
+      }
+      <button class="keuze" onclick="wachtpostKiezen('laten')">Laat hem met rust.<small>Wat hij hier doet, is niet jouw zaak. Nog niet.</small></button>
+    </div>
   </div></div>`;
 }
 
