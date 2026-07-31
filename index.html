@@ -274,6 +274,7 @@ const ASSETS = {
   wegkapel:    "assets/scene/wegkapel.webp",
   wegkapel_leeg: "assets/scene/wegkapel-leeg.webp",
   wachtpost: "assets/scene/wachtpost.webp",
+  vier_eiken_dorp: "assets/scene/vier-eiken-dorp.webp",
   smidse_beversluis: "assets/scene/smidse-beversluis.webp",
   smidse:      "assets/scene/smidse.webp",
   vier_eiken:  "assets/scene/vier-eiken.webp",
@@ -1064,7 +1065,7 @@ const ROUTES = {
 };
 
 let reis = null;
-let winkel = null; // null | "smidse" | "karavaan" | "herberg" | "stal" — losse modale schermen, niet gebonden aan het reizen
+let winkel = null; // null | "smidse" | "karavaan" | "herberg" | "stal" | "viereiken_man" | "viereiken_hout" — losse modale schermen, niet gebonden aan het reizen
 
 function voorraadOverzicht(){
   const telling = {};
@@ -1476,6 +1477,16 @@ function stalVerzorgen(){
   if(S.munten < 4) return;
   S.munten -= 4;
   schrijf("Liet Vroeg verzorgen in de stal van Beversluis.",2);
+  bewaar(); render();
+}
+
+function vierEikenManOpenen(){ winkel = "viereiken_man"; render(); }
+function vierEikenHoutOpenen(){ winkel = "viereiken_hout"; render(); }
+function vierEikenVerraderAchterlaten(){
+  S.vlaggen.vier_eiken_verrader_afgehandeld = true;
+  S.vlaggen.verrader_lot = "gedood_bij_vier_eiken";
+  schrijf("Liet de geredde man achter bij Vier Eiken — het dorp noemde hem een verrader en zou hem begraven bij de mesthoop.",2);
+  winkel = null;
   bewaar(); render();
 }
 
@@ -1912,6 +1923,25 @@ function toonKaartReizen(){
           <button type="button" onclick="kaartZoomReset('plattegrond')" aria-label="Kaart passend maken">⤢</button>
         </div>
       </div>`;
+    } else if(S.locatie === "vier_eiken"){
+      h += `<div class="kaart-viewport kaart-viewport--plattegrond" id="viereikenViewport">
+        <div class="kaart-zoom" id="viereikenZoom">
+          <img class="kaart" src="${ASSETS.vier_eiken_dorp}" alt="Vier Eiken, bij de houtstapel" onerror="this.remove()">
+        </div>
+        <div class="kaart-hotspots" id="viereikenHotspots">
+          <button class="hotspot" type="button" onclick="vierEikenManOpenen()" data-fx="0.642" data-fy="0.507" title="De man met de riek">
+            <span class="merk">${KRUISJE_SVG}</span><span class="label">De man</span>
+          </button>
+          <button class="hotspot" type="button" onclick="vierEikenHoutOpenen()" data-fx="0.863" data-fy="0.507" title="De houtstapel">
+            <span class="merk">${KRUISJE_SVG}</span><span class="label">Houtstapel</span>
+          </button>
+        </div>
+        <div class="kaart-knoppen">
+          <button type="button" onclick="kaartZoomStap('viereiken',1)" aria-label="Inzoomen">+</button>
+          <button type="button" onclick="kaartZoomStap('viereiken',-1)" aria-label="Uitzoomen">−</button>
+          <button type="button" onclick="kaartZoomReset('viereiken')" aria-label="Kaart passend maken">⤢</button>
+        </div>
+      </div>`;
     }
   }
   h += `</article>`;
@@ -1926,6 +1956,8 @@ function toonKaartReizen(){
   if(winkel === "karavaan") h += tussendoorKaravaan();
   if(winkel === "herberg") h += tussendoorHerberg();
   if(winkel === "stal") h += tussendoorStal();
+  if(winkel === "viereiken_man") h += tussendoorVierEikenMan();
+  if(winkel === "viereiken_hout") h += tussendoorVierEikenHout();
   return h;
 }
 
@@ -2201,6 +2233,36 @@ function tussendoorWachtpost(){
   </div></div>`;
 }
 
+function tussendoorVierEikenMan(){
+  const bijZichVerrader = S.vlaggen.galgenboom_lot === "gered" && S.vlaggen.verrader_naar === "vier_eiken" && !S.vlaggen.vier_eiken_verrader_afgehandeld;
+  if(bijZichVerrader){
+    return `<div class="overlay-achtergrond"><div class="overlay-blad">
+      <p class="kop">Vier Eiken</p><h1>«Laat die verrader maar hier»</h1>
+      <p>De man met de riek ziet meteen wie je bij je hebt. Zijn gezicht verandert niet — het was al gesloten voor je iets zei.</p>
+      <p>«Laat die verrader maar hier,» zegt hij. «We zullen hem netjes begraven bij de mesthoop.»</p>
+      <p>Niemand achter hem protesteert. Niemand kijkt zelfs verrast.</p>
+      <div class="keuzes" style="margin-top:.4rem">
+        <button class="keuze" onclick="vierEikenVerraderAchterlaten()">Laat hem achter.<small>Je hebt gedaan wat je kon. Dit is niet meer aan jou.</small></button>
+      </div>
+    </div></div>`;
+  }
+  return `<div class="overlay-achtergrond"><div class="overlay-blad">
+    <p class="kop">Vier Eiken</p><h1>«Dit dorp is niet voor vreemden»</h1>
+    <p>Hij komt niet dichterbij, en houdt de riek niet omhoog, maar ook niet weg. Achter hem schuiven kinderen en een vrouw met over elkaar geslagen armen dichter naar de huizen.</p>
+    <p>«Dit dorp is niet voor vreemden,» zegt hij. Meer zegt hij niet, en zijn blik maakt duidelijk dat hij dat ook niet van plan is.</p>
+    <p style="margin-top:.8rem"><button class="knop knop--stil" onclick="winkelSluiten()">Laat het rusten.</button></p>
+  </div></div>`;
+}
+
+function tussendoorVierEikenHout(){
+  return `<div class="overlay-achtergrond"><div class="overlay-blad">
+    <p class="kop">Vier Eiken</p><h1>De houtstapel</h1>
+    <p>Vers gehakt eikenhout, een hele stapel, nog geurend naar het sap. Het ligt te drogen tegen de zijkant van het erf — te veel voor gewoon onderhoud, te vers om al lang te liggen.</p>
+    <p>Je telt de bomen die het dorp zijn naam gaf. Eén, twee, drie — waar vroeger, zeggen de verhalen, een vierde stond. Niemand hier lijkt daar met je over te willen praten.</p>
+    <p style="margin-top:.8rem"><button class="knop knop--stil" onclick="winkelSluiten()">Verder kijken.</button></p>
+  </div></div>`;
+}
+
 function tussendoorRoute(){
   const naar = PLAATSEN[reis.naar];
   const opties = ROUTES[routeKey(S.locatie, reis.naar)] || [];
@@ -2338,6 +2400,7 @@ function render(){
   if(w === "kaart"){
     kaartInitZoom("kaart");
     if(document.getElementById("plattegrondViewport")) kaartInitZoom("plattegrond");
+    if(document.getElementById("viereikenViewport")) kaartInitZoom("viereiken");
   }
 }
 function naar(id){
