@@ -375,6 +375,16 @@ const ETSEN = {
     <path d="M26 38l-6-8M40 34l6-10M54 40l6-8" opacity=".6"/>
     <path d="M84 70c0-8 4-12 4-12h14s4 4 4 12z" opacity=".7"/><path d="M86 58h18" stroke-width="2.2" opacity=".7"/>
     <path d="M8 74h104" stroke-width=".8" opacity=".5"/></g></svg>`,
+  herberg:`<svg viewBox="0 0 120 80"><g stroke="#241a10" fill="none" stroke-width="1.6" stroke-linecap="round">
+    <path d="M20 70V34h60v36"/><path d="M14 34l36-20 36 20"/>
+    <rect x="34" y="44" width="14" height="14" opacity=".6"/><rect x="72" y="44" width="14" height="14" opacity=".6"/>
+    <path d="M20 34v-14h6v10" opacity=".7"/><ellipse cx="26" cy="16" rx="6" ry="4" opacity=".7"/>
+    <path d="M8 74h104" stroke-width=".8" opacity=".5"/></g></svg>`,
+  stal:`<svg viewBox="0 0 120 80"><g stroke="#241a10" fill="none" stroke-width="1.6" stroke-linecap="round">
+    <path d="M16 70V40h88v30"/><path d="M10 40l50-22 50 22"/>
+    <path d="M40 70V50h16v20M64 70V50h16v20" opacity=".6"/>
+    <path d="M96 58c4-6 4-12 0-16-2 4-6 4-8 2 0 6 2 10 8 14z" opacity=".7"/>
+    <path d="M8 74h104" stroke-width=".8" opacity=".5"/></g></svg>`,
   korte_piek:`<svg viewBox="0 0 60 60"><g stroke="#241a10" fill="none" stroke-width="1.7" stroke-linecap="round"><path d="M30 48V18"/><path d="M30 18l-6 10h12z" fill="#241a10" stroke="none"/><path d="M26 48h8" stroke-width="2.4"/></g></svg>`,
   smidshandbijl:`<svg viewBox="0 0 60 60"><g stroke="#241a10" fill="none" stroke-width="1.7" stroke-linecap="round"><path d="M20 46l16-16"/><path d="M36 30c5-7 13-9 15-3s-3 13-9 13-9-4-6-10z"/><path d="M18 48l5-5" stroke-width="2.8"/></g></svg>`,
   eenvoudig_zwaard:`<svg viewBox="0 0 60 60"><g stroke="#241a10" fill="none" stroke-width="1.7" stroke-linecap="round"><path d="M30 48V14"/><path d="M21 21h18"/><path d="M27 48h6" stroke-width="2.4"/></g></svg>`,
@@ -1030,7 +1040,7 @@ const ROUTES = {
 };
 
 let reis = null;
-let winkel = null; // null | "smidse" | "karavaan" — losse modale schermen, niet gebonden aan het reizen
+let winkel = null; // null | "smidse" | "karavaan" | "herberg" | "stal" — losse modale schermen, niet gebonden aan het reizen
 
 function voorraadOverzicht(){
   const telling = {};
@@ -1383,6 +1393,35 @@ function karavaanTerug(){
   S.scene = "hoofdstuk1";
   S.weergave = "kaart";
   bewaar(); render(); window.scrollTo({top:0,behavior:"instant"});
+}
+
+const HERBERG_GERUCHTEN = [
+  "Er wordt gezegd dat de tollenaar zelf een graankar liet beroven om de verzekering te innen.",
+  "Een reiziger zweert dat hij bij Vier Eiken een ridder met een rode baard zag vechten tegen drie man tegelijk. Het waren er twee, en hij stond er slecht bij.",
+  "De kanselier zoekt iemand die kan zwijgen. Dat is alles wat iedereen erover weet, en dat is precies de bedoeling.",
+  "Bij de noordpoort is een wachter ontslagen. Niemand zegt waarom, en iedereen heeft er een reden voor bedacht.",
+  "Een marskramer vertelt over een wegkapel met een Mariabeeld dat te mooi is voor zo'n klein kapelletje. Niemand gelooft het tot ze het zelf zien."
+];
+
+function herbergOpenen(){ winkel = "herberg"; render(); }
+function herbergMaaltijd(){
+  if(S.munten < 3) return;
+  S.munten -= 3;
+  schrijf("At en dronk in de herberg van Beversluis.",2);
+  bewaar(); render();
+}
+function herbergLuisteren(){
+  const tekst = HERBERG_GERUCHTEN[Math.floor(Math.random()*HERBERG_GERUCHTEN.length)];
+  fluister(tekst, 1);
+  bewaar(); render();
+}
+
+function stalOpenen(){ winkel = "stal"; render(); }
+function stalVerzorgen(){
+  if(S.munten < 4) return;
+  S.munten -= 4;
+  schrijf("Liet Vroeg verzorgen in de stal van Beversluis.",2);
+  bewaar(); render();
 }
 
 function duelStart(ctx){
@@ -1805,6 +1844,12 @@ function toonKaartReizen(){
           <button class="hotspot" type="button" onclick="karavaanOpenen()" data-fx="0.66" data-fy="0.723" title="De Karavaanmeester">
             <span class="merk">${KRUISJE_SVG}</span><span class="label">Karavaanmeester</span>
           </button>
+          <button class="hotspot" type="button" onclick="herbergOpenen()" data-fx="0.604" data-fy="0.488" title="De Herberg">
+            <span class="merk">${KRUISJE_SVG}</span><span class="label">Herberg</span>
+          </button>
+          <button class="hotspot" type="button" onclick="stalOpenen()" data-fx="0.428" data-fy="0.695" title="De Stal">
+            <span class="merk">${KRUISJE_SVG}</span><span class="label">Stal</span>
+          </button>
         </div>
         <div class="kaart-knoppen">
           <button type="button" onclick="kaartZoomStap('plattegrond',1)" aria-label="Inzoomen">+</button>
@@ -1823,6 +1868,8 @@ function toonKaartReizen(){
   else if(reis && reis.fase === "onderweg" && reis.gebeurtenis) h += tussendoorGebeurtenis();
   if(winkel === "smidse") h += tussendoorSmidse();
   if(winkel === "karavaan") h += tussendoorKaravaan();
+  if(winkel === "herberg") h += tussendoorHerberg();
+  if(winkel === "stal") h += tussendoorStal();
   return h;
 }
 
@@ -2044,6 +2091,36 @@ function tussendoorKaravaan(){
         : `<button class="keuze" onclick="karavaanStart(KARAVAAN_WAARDEVOL_CTX,true)">Waardevolle lading.<small>Een goed bewapende bende, maar 40 penningen als je ze afslaat.</small></button>`}
     </div>
     <p style="margin-top:.8rem"><button class="knop knop--stil" onclick="winkelSluiten()">Niet vandaag.</button></p>
+  </div></div>`;
+}
+
+function tussendoorHerberg(){
+  return `<div class="overlay-achtergrond"><div class="overlay-blad">
+    <p class="kop">De Herberg, Beversluis</p><h1>Warmte en het laatste nieuws</h1>
+    ${plaat("herberg")}
+    <p>Het is er warm van het vuur en van de mensen, en niemand kijkt lang naar wie er binnenkomt. Een tafel, een kroes, en het nieuws van de week — dat is hier alles te koop.</p>
+    <p class="cijfers">Penningen: ${S.munten}</p>
+    <div class="keuzes" style="margin-top:.4rem">
+      <button class="keuze" ${S.munten<3?"disabled":""} style="${S.munten<3?"opacity:.5":""}" onclick="herbergMaaltijd()">Een maaltijd en een kroes — 3 penningen<small>Warm eten, en een half uur waarin niemand iets van je wil.</small></button>
+      <button class="keuze" onclick="herbergLuisteren()">Luister naar het nieuws.<small>Kost niets. Levert misschien iets op.</small></button>
+    </div>
+    <p style="margin-top:.8rem"><button class="knop knop--stil" onclick="winkelSluiten()">Weer verder.</button></p>
+  </div></div>`;
+}
+
+function tussendoorStal(){
+  const schuw = S.vlaggen.paard_schuwt_galgenpad
+    ? " Bij het noemen van de galgenboom zet hij zijn oren plat en stapt achteruit. Dat verdwijnt niet met roskammen."
+    : "";
+  return `<div class="overlay-achtergrond"><div class="overlay-blad">
+    <p class="kop">De Stal, Beversluis</p><h1>Vroeg</h1>
+    ${plaat("stal")}
+    <p>Vroeg staat met zijn kop over de halve deur en trekt aan zijn hoofdstel zodra hij je ruikt. Hij trekt nog steeds naar rechts. Dat is nooit weggegaan.${schuw}</p>
+    <p class="cijfers">Penningen: ${S.munten}</p>
+    <div class="keuzes" style="margin-top:.4rem">
+      <button class="keuze" ${S.munten<4?"disabled":""} style="${S.munten<4?"opacity:.5":""}" onclick="stalVerzorgen()">Laat hem verzorgen — 4 penningen<small>Water, haver, en iemand die zijn hoeven bekijkt.</small></button>
+    </div>
+    <p style="margin-top:.8rem"><button class="knop knop--stil" onclick="winkelSluiten()">Weer verder.</button></p>
   </div></div>`;
 }
 
