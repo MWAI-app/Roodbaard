@@ -156,7 +156,8 @@ button{font:inherit;cursor:pointer}
 .kaart{width:100%;height:100%;display:block}
 .kaart text{font-family:var(--kapitaal);font-size:26px;fill:var(--inkt);letter-spacing:.08em}
 .kaart .mist{fill:var(--perkament-diep);opacity:.94}
-.plattegrond{width:100%;height:auto;display:block;margin:.7rem 0 0;border:1px solid var(--perkament-schaduw)}
+.plattegrond{width:100%;height:auto;display:block;border:1px solid var(--perkament-schaduw)}
+.plattegrond-wrap{position:relative;margin:.7rem 0 0}
 .kaart-viewport{position:relative;overflow:hidden;aspect-ratio:1448/1086;background:#d8c493;border:1px solid var(--perkament-schaduw);touch-action:pan-y;cursor:grab}
 .kaart-viewport--gezoomd{touch-action:none;cursor:grab}
 .kaart-viewport--sleept{cursor:grabbing}
@@ -273,6 +274,7 @@ const ASSETS = {
   galgenboom:  "assets/scene/galgenboom.webp",
   wegkapel:    "assets/scene/wegkapel.webp",
   wegkapel_leeg: "assets/scene/wegkapel-leeg.webp",
+  smidse_beversluis: "assets/scene/smidse-beversluis.webp",
   smidse:      "assets/scene/smidse.webp",
   vier_eiken:  "assets/scene/vier-eiken.webp",
   duel:        "assets/scene/duel.webp",
@@ -368,6 +370,15 @@ const ETSEN = {
     <path d="M56 60l10 4-2 4-10-4z" opacity=".6"/>
     <g stroke-width="1.3" opacity=".45"><path d="M14 74c2-3 6-3 8 0M24 75c2-3 6-3 8 0M96 74c2-3 6-3 8 0M84 75c2-3 6-3 8 0"/></g>
     <path d="M8 76h104" stroke-width=".8" opacity=".5"/></g></svg>`,
+  smidse_beversluis:`<svg viewBox="0 0 120 80"><g stroke="#241a10" fill="none" stroke-width="1.6" stroke-linecap="round">
+    <path d="M14 70h56V52H14z"/><path d="M14 52h56" stroke-width="2.2"/>
+    <path d="M26 52V38M40 52V34M54 52V40" stroke-width="1.2" opacity=".6"/>
+    <path d="M26 38l-6-8M40 34l6-10M54 40l6-8" opacity=".6"/>
+    <path d="M84 70c0-8 4-12 4-12h14s4 4 4 12z" opacity=".7"/><path d="M86 58h18" stroke-width="2.2" opacity=".7"/>
+    <path d="M8 74h104" stroke-width=".8" opacity=".5"/></g></svg>`,
+  korte_piek:`<svg viewBox="0 0 60 60"><g stroke="#241a10" fill="none" stroke-width="1.7" stroke-linecap="round"><path d="M30 48V18"/><path d="M30 18l-6 10h12z" fill="#241a10" stroke="none"/><path d="M26 48h8" stroke-width="2.4"/></g></svg>`,
+  smidshandbijl:`<svg viewBox="0 0 60 60"><g stroke="#241a10" fill="none" stroke-width="1.7" stroke-linecap="round"><path d="M20 46l16-16"/><path d="M36 30c5-7 13-9 15-3s-3 13-9 13-9-4-6-10z"/><path d="M18 48l5-5" stroke-width="2.8"/></g></svg>`,
+  eenvoudig_zwaard:`<svg viewBox="0 0 60 60"><g stroke="#241a10" fill="none" stroke-width="1.7" stroke-linecap="round"><path d="M30 48V14"/><path d="M21 21h18"/><path d="M27 48h6" stroke-width="2.4"/></g></svg>`,
   leeg:`<svg viewBox="0 0 60 60"><g stroke="#241a10" fill="none" stroke-width="1.2" opacity=".45"><path d="M12 48L48 12M48 48L12 12"/><rect x="12" y="12" width="36" height="36"/></g></svg>`
 };
 
@@ -415,8 +426,21 @@ const VOLGWAPEN = {
 const OPLEIDINGEN = ["Ongetraind","Geoefend","Doorgehard"];
 const OPLEIDINGKOSTEN = [10,25];
 
+/* Voorraadwapens: eigen, eenvoudige smidse-catalogus, los van Renze's
+   verhaalwapens (ITEMS) en los van de directe leger-aankopen (VOLGWAPEN).
+   Ze dragen velden van beide systemen, zodat een stuk uit de voorraad
+   zowel Renze zelf (laag/gewicht/ontzag/opval/bereik) als een manschap
+   (kracht) kan bewapenen, afhankelijk van aan wie je het geeft. */
+const VOORRAADWAPENS = {
+  korte_piek:       {naam:"Korte piek",       laag:"wapen", prijs:8,  gewicht:2, ontzag:1, opval:1, bereik:1, kracht:2, noot:"Smidswerk, geen siersmeedwerk. Doet wat het moet."},
+  smidshandbijl:    {naam:"Smidshandbijl",    laag:"wapen", prijs:12, gewicht:2, ontzag:1, opval:1, bereik:1, kracht:3, noot:"Vers gehard. Nog geen naam waard."},
+  eenvoudig_zwaard: {naam:"Eenvoudig zwaard", laag:"wapen", prijs:22, gewicht:3, ontzag:2, opval:2, bereik:2, kracht:4, noot:"Geen Zwaard van Weel. Een zwaard, wel."}
+};
+function itemInfo(id){ return ITEMS[id] || VOORRAADWAPENS[id]; }
+function manschapWapenInfo(id){ return VOLGWAPEN[id] || VOORRAADWAPENS[id]; }
+
 function legerkracht(){
-  return S.manschappen.reduce((t,m)=> t + m.opleiding + (VOLGWAPEN[m.wapen]?.kracht||0), 0);
+  return S.manschappen.reduce((t,m)=> t + m.opleiding + (manschapWapenInfo(m.wapen)?.kracht||0), 0);
 }
 
 /* ---------------------------------------------------------------------
@@ -440,6 +464,7 @@ function nieuweStaat(){
     vlaggen: {},
     dracht: {onder:"linnen_hemd", midden:"gelapt_wambuis", harnas:null, wapen:null},
     kist: ["linnen_hemd","gelapt_wambuis","jachtmes"],
+    voorraad: [],
     manschappen: [],
     inschrijvingen: [
       {tekst:"Renze, zoon van Wibbe de smid, van Hooiveld. Zeventien winters.", hand:1},
@@ -460,15 +485,16 @@ function migreer(s){
 }
 
 let S = migreer(OPSLAG.lees());
+if(!S.voorraad) S.voorraad = [];
 function bewaar(){ OPSLAG.schrijf(S); }
 
 /* Afgeleide waarden */
-function gedragen(){ return ["onder","midden","harnas","wapen"].map(l=>S.dracht[l]).filter(Boolean).map(i=>ITEMS[i]); }
+function gedragen(){ return ["onder","midden","harnas","wapen"].map(l=>S.dracht[l]).filter(Boolean).map(i=>itemInfo(i)); }
 function som(veld){ return gedragen().reduce((t,i)=>t+(i[veld]||0),0); }
 function uithouding(){ return Math.max(2, 12 - som("gewicht")); }
 function ontzag(){ return som("ontzag"); }
 function onopvallend(){ return Math.max(0, 10 - som("opval")); }
-function bereik(){ const w = S.dracht.wapen; return w ? (ITEMS[w].bereik||0) : 0; }
+function bereik(){ const w = S.dracht.wapen; return w ? (itemInfo(w).bereik||0) : 0; }
 
 function schrijf(tekst, hand, sleutel){
   if(sleutel){ const oud = S.inschrijvingen.find(i=>i.sleutel===sleutel); if(oud) oud.doorgestreept = true; }
@@ -1005,6 +1031,40 @@ const ROUTES = {
 };
 
 let reis = null;
+let winkel = null; // null | "smidse" — losse modale schermen, niet gebonden aan het reizen
+
+function voorraadOverzicht(){
+  const telling = {};
+  S.voorraad.forEach(id=>{ telling[id] = (telling[id]||0) + 1; });
+  return telling;
+}
+function smidseOpenen(){ winkel = "smidse"; render(); }
+function winkelSluiten(){ winkel = null; render(); }
+function smidseKopen(id){
+  const item = VOORRAADWAPENS[id];
+  if(!item || S.munten < item.prijs) return;
+  S.munten -= item.prijs;
+  S.voorraad.push(id);
+  schrijf(`Kocht ${item.naam} bij de smidse van Beversluis, voor de voorraad.`,2);
+  bewaar(); render();
+}
+function voorraadGeefAanRenze(id){
+  const idx = S.voorraad.indexOf(id);
+  if(idx === -1) return;
+  S.voorraad.splice(idx,1);
+  S.kist.push(id);
+  schrijf(`Voegde ${VOORRAADWAPENS[id].naam} uit de voorraad toe aan zijn eigen uitrusting.`,2);
+  bewaar(); render();
+}
+function voorraadGeefAanManschap(id, i){
+  const idx = S.voorraad.indexOf(id);
+  const m = S.manschappen[i];
+  if(idx === -1 || !m) return;
+  S.voorraad.splice(idx,1);
+  m.wapen = id;
+  schrijf(`Gaf ${VOORRAADWAPENS[id].naam} uit de voorraad aan ${m.naam}. Het is niet meer van Renze.`,2);
+  bewaar(); render();
+}
 
 function reisKiezen(naar){
   reis = {fase:"route", naar};
@@ -1440,21 +1500,28 @@ function toonUitrusting(){
 
   for(const laag of ["onder","midden","harnas","wapen"]){
     const huidig = S.dracht[laag];
-    const opties = S.kist.filter(id=>ITEMS[id].laag===laag);
+    const opties = S.kist.filter(id=>itemInfo(id).laag===laag);
     h += `<div class="laag">
       <div>${plaat(huidig || "leeg", true)}</div>
       <div>
         <span class="label">${LAAGNAMEN[laag]}</span>
-        <div class="naam">${huidig ? ITEMS[huidig].naam : "— niets —"}</div>
-        <div class="cijfers">${huidig ? ITEMS[huidig].noot : "Deze laag is leeg."}</div>
+        <div class="naam">${huidig ? itemInfo(huidig).naam : "— niets —"}</div>
+        <div class="cijfers">${huidig ? itemInfo(huidig).noot : "Deze laag is leeg."}</div>
         <div class="kies">
-          ${opties.map(id=>`<button aria-pressed="${id===huidig}" onclick="trekAan('${laag}','${id}')">${ITEMS[id].naam}</button>`).join("")}
+          ${opties.map(id=>`<button aria-pressed="${id===huidig}" onclick="trekAan('${laag}','${id}')">${itemInfo(id).naam}</button>`).join("")}
           ${huidig && laag!=="onder" ? `<button onclick="trekAan('${laag}',null)">uit</button>`:""}
         </div>
       </div>
     </div>`;
   }
   h += `</div>`;
+  const voorraadTelling = voorraadOverzicht();
+  if(Object.keys(voorraadTelling).length){
+    h += `<hr class="regel"><p class="label">Voorraad, nog niet uitgedeeld</p><div class="kies">` +
+      Object.entries(voorraadTelling).map(([id,n])=>
+        `<button onclick="voorraadGeefAanRenze('${id}')">Neem zelf: ${VOORRAADWAPENS[id].naam}${n>1?` (×${n})`:""}</button>`
+      ).join("") + `</div>`;
+  }
   if(les){
     const klaar = S.dracht.midden === "gevechtspak";
     h += `<hr class="regel">
@@ -1537,7 +1604,7 @@ function toonLeger(){
       h += `<div class="laag" style="grid-template-columns:1fr">
         <div>
           <div class="naam">${m.naam} <span class="cijfers">— ${OPLEIDINGEN[m.opleiding]}</span></div>
-          <div class="cijfers">${VOLGKLEDING[m.kleding].naam} · ${VOLGWAPEN[m.wapen].naam}</div>
+          <div class="cijfers">${VOLGKLEDING[m.kleding].naam} · ${manschapWapenInfo(m.wapen).naam}</div>
           <div class="kies" style="margin-top:.35rem">
             ${volgendeKost!==undefined
               ? `<button ${S.munten<volgendeKost?"disabled":""} onclick="legerTrain(${i})">Train — ${volgendeKost}p → ${OPLEIDINGEN[m.opleiding+1]}</button>`
@@ -1548,6 +1615,7 @@ function toonLeger(){
           </div>
           <div class="kies">
             ${Object.entries(VOLGWAPEN).map(([id,it])=>`<button aria-pressed="${id===m.wapen}" ${(S.munten<it.prijs&&id!==m.wapen)?"disabled":""} onclick="legerBewapen(${i},'${id}')">${it.naam}${it.prijs?` (${it.prijs}p)`:""}</button>`).join("")}
+            ${Object.entries(voorraadOverzicht()).map(([id,n])=>`<button onclick="voorraadGeefAanManschap('${id}',${i})">Uit voorraad: ${VOORRAADWAPENS[id].naam}${n>1?` (×${n})`:""}</button>`).join("")}
           </div>
           <div class="kies"><button onclick="legerOntsla(${i})">Laat gaan</button></div>
         </div>
@@ -1602,6 +1670,8 @@ function toonKaartOud(){
 
 /* De kaart is het hoofdscherm: positie groot, tekst/keuzes klein eronder.
    Een route kiezen of een gebeurtenis tegenkomen opent een los tussendoorscherm. */
+const KRUISJE_SVG = `<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>`;
+
 function kaartHotspots(){
   let h = "";
   for(const id in PLAATSEN){
@@ -1609,7 +1679,7 @@ function kaartHotspots(){
     const plaats = PLAATSEN[id];
     const fx = plaats.x/1448, fy = plaats.y/1086;
     const opties = ROUTES[routeKey(S.locatie, id)];
-    const kruisje = `<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>`;
+    const kruisje = KRUISJE_SVG;
     if(!opties){
       h += `<button class="hotspot hotspot--dicht" type="button" disabled
         data-fx="${fx}" data-fy="${fy}" title="Nog geen route uitgestippeld naar ${plaats.naam}.">
@@ -1647,7 +1717,12 @@ function toonKaartReizen(){
   } else {
     h += `<p class="kaart-wenk">Klik op een plek op de kaart om ernaartoe te reizen.</p>`;
     if(S.locatie === "beversluis"){
-      h += `<img class="plattegrond" src="${ASSETS.beversluis_plattegrond}" alt="Plattegrond van Beversluis" onerror="this.remove()">`;
+      h += `<div class="plattegrond-wrap">
+        <img class="plattegrond" src="${ASSETS.beversluis_plattegrond}" alt="Plattegrond van Beversluis" onerror="this.remove()">
+        <button class="hotspot" type="button" onclick="smidseOpenen()" style="left:74.2%;top:56.6%" title="De Smidse">
+          <span class="merk">${KRUISJE_SVG}</span><span class="label">Smidse</span>
+        </button>
+      </div>`;
     }
   }
   h += `</article>`;
@@ -1657,6 +1732,7 @@ function toonKaartReizen(){
   else if(reis && reis.fase === "onderweg" && reis.wegkapel) h += tussendoorWegkapel();
   else if(reis && reis.fase === "onderweg" && reis.wegkapelLeeg) h += tussendoorWegkapelLeeg();
   else if(reis && reis.fase === "onderweg" && reis.gebeurtenis) h += tussendoorGebeurtenis();
+  if(winkel === "smidse") h += tussendoorSmidse();
   return h;
 }
 
@@ -1830,6 +1906,24 @@ function tussendoorWegkapelLeeg(){
       <button class="keuze" onclick="wegkapelLeegKiezen('doek')">Neem de doek mee.<small>Wit met rood. Ooit vind je bij wie de mantel hoort.</small></button>
       <button class="keuze" onclick="wegkapelLeegKiezen('negeren')">Rijd door.<small>Wat hier gebeurde, is jouw zaak niet — nog niet.</small></button>
     </div>
+  </div></div>`;
+}
+
+function tussendoorSmidse(){
+  const telling = voorraadOverzicht();
+  return `<div class="overlay-achtergrond"><div class="overlay-blad">
+    <p class="kop">De Smidse, Beversluis</p><h1>Wat wil je van me kopen?</h1>
+    ${plaat("smidse_beversluis")}
+    <p>De smid veegt zijn handen af aan een schort dat nooit meer schoon wordt en neemt je op zoals smeden doen — schattend wat je kunt dragen, niet wie je bent. Je vader had zulke handen ook, ooit, in een kleinere smidse in Hooiveld.</p>
+    <p class="cijfers">Penningen: ${S.munten}</p>
+    <div class="keuzes" style="margin-top:.4rem">` + Object.entries(VOORRAADWAPENS).map(([id,it])=>{
+      const kan = S.munten >= it.prijs;
+      return `<button class="keuze" ${kan?"":"disabled"} style="${kan?"":"opacity:.5"}" onclick="smidseKopen('${id}')">${it.naam} — ${it.prijs}p<small>${it.noot}</small></button>`;
+    }).join("") + `</div>` +
+    (Object.keys(telling).length ? `<hr class="regel"><p class="label">In voorraad</p><p class="cijfers">${
+      Object.entries(telling).map(([id,n])=>`${VOORRAADWAPENS[id].naam}${n>1?` ×${n}`:""}`).join(", ")
+    }</p>` : "") + `
+    <p style="margin-top:.8rem"><button class="knop knop--stil" onclick="winkelSluiten()">Genoeg voor vandaag.</button></p>
   </div></div>`;
 }
 
