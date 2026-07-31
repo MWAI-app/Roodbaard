@@ -156,9 +156,8 @@ button{font:inherit;cursor:pointer}
 .kaart{width:100%;height:100%;display:block}
 .kaart text{font-family:var(--kapitaal);font-size:26px;fill:var(--inkt);letter-spacing:.08em}
 .kaart .mist{fill:var(--perkament-diep);opacity:.94}
-.plattegrond{width:100%;height:auto;display:block;border:1px solid var(--perkament-schaduw)}
-.plattegrond-wrap{position:relative;margin:.7rem 0 0}
 .kaart-viewport{position:relative;overflow:hidden;aspect-ratio:1448/1086;background:#d8c493;border:1px solid var(--perkament-schaduw);touch-action:pan-y;cursor:grab}
+.kaart-viewport--plattegrond{margin:.7rem 0 0}
 .kaart-viewport--gezoomd{touch-action:none;cursor:grab}
 .kaart-viewport--sleept{cursor:grabbing}
 .kaart-zoom{position:absolute;top:0;left:0;width:100%;height:100%;transform-origin:0 0}
@@ -1780,9 +1779,9 @@ function toonKaartReizen(){
       <div class="kaart-zoom" id="kaartZoom">${kaartSvg()}</div>
       <div class="kaart-hotspots" id="kaartHotspots">${(!reis || reis.fase !== "onderweg") ? kaartHotspots() : ""}</div>
       <div class="kaart-knoppen">
-        <button type="button" onclick="kaartZoomStap(1)" aria-label="Inzoomen">+</button>
-        <button type="button" onclick="kaartZoomStap(-1)" aria-label="Uitzoomen">−</button>
-        <button type="button" onclick="kaartZoomReset()" aria-label="Kaart passend maken">⤢</button>
+        <button type="button" onclick="kaartZoomStap('kaart',1)" aria-label="Inzoomen">+</button>
+        <button type="button" onclick="kaartZoomStap('kaart',-1)" aria-label="Uitzoomen">−</button>
+        <button type="button" onclick="kaartZoomReset('kaart')" aria-label="Kaart passend maken">⤢</button>
       </div>
     </div>`;
 
@@ -1795,14 +1794,23 @@ function toonKaartReizen(){
   } else {
     h += `<p class="kaart-wenk">Klik op een plek op de kaart om ernaartoe te reizen.</p>`;
     if(S.locatie === "beversluis"){
-      h += `<div class="plattegrond-wrap">
-        <img class="plattegrond" src="${ASSETS.beversluis_plattegrond}" alt="Plattegrond van Beversluis" onerror="this.remove()">
-        <button class="hotspot" type="button" onclick="smidseOpenen()" style="left:74.2%;top:56.6%" title="De Smidse">
-          <span class="merk">${KRUISJE_SVG}</span><span class="label">Smidse</span>
-        </button>
-        <button class="hotspot" type="button" onclick="karavaanOpenen()" style="left:66%;top:72.3%" title="De Karavaanmeester">
-          <span class="merk">${KRUISJE_SVG}</span><span class="label">Karavaanmeester</span>
-        </button>
+      h += `<div class="kaart-viewport kaart-viewport--plattegrond" id="plattegrondViewport">
+        <div class="kaart-zoom" id="plattegrondZoom">
+          <img class="kaart" src="${ASSETS.beversluis_plattegrond}" alt="Plattegrond van Beversluis" onerror="this.remove()">
+        </div>
+        <div class="kaart-hotspots" id="plattegrondHotspots">
+          <button class="hotspot" type="button" onclick="smidseOpenen()" data-fx="0.742" data-fy="0.566" title="De Smidse">
+            <span class="merk">${KRUISJE_SVG}</span><span class="label">Smidse</span>
+          </button>
+          <button class="hotspot" type="button" onclick="karavaanOpenen()" data-fx="0.66" data-fy="0.723" title="De Karavaanmeester">
+            <span class="merk">${KRUISJE_SVG}</span><span class="label">Karavaanmeester</span>
+          </button>
+        </div>
+        <div class="kaart-knoppen">
+          <button type="button" onclick="kaartZoomStap('plattegrond',1)" aria-label="Inzoomen">+</button>
+          <button type="button" onclick="kaartZoomStap('plattegrond',-1)" aria-label="Uitzoomen">−</button>
+          <button type="button" onclick="kaartZoomReset('plattegrond')" aria-label="Kaart passend maken">⤢</button>
+        </div>
       </div>`;
     }
   }
@@ -1819,29 +1827,38 @@ function toonKaartReizen(){
 }
 
 /* ---------------------------------------------------------------------
-   5d. IN- EN UITZOOMEN OP DE KAART — pan/zoom binnen de kaart zelf, zodat
+   5d. IN- EN UITZOOMEN OP EEN KAART — pan/zoom binnen de kaart zelf, zodat
    plekmarkers een vaste grootte houden en relatief kleiner ogen naarmate
-   je verder inzoomt (in plaats van mee te schalen met de kaart).
+   je verder inzoomt (in plaats van mee te schalen met de kaart). Werkt
+   voor meerdere, onafhankelijke viewports (de reiskaart, de plattegrond),
+   elk met een eigen naam/staat: <naam>Viewport, <naam>Zoom, <naam>Hotspots.
    --------------------------------------------------------------------- */
-let kz = {zoom:1, panX:0, panY:0, min:1, max:4};
+let zoomStaten = {};
 
-function kaartToepassenTransform(){
-  const vp = document.getElementById("kaartViewport");
-  const laag = document.getElementById("kaartZoom");
+function kzState(naam){
+  if(!zoomStaten[naam]) zoomStaten[naam] = {zoom:1, panX:0, panY:0, min:1, max:4};
+  return zoomStaten[naam];
+}
+
+function kaartToepassenTransform(naam){
+  const kz = kzState(naam);
+  const vp = document.getElementById(naam+"Viewport");
+  const laag = document.getElementById(naam+"Zoom");
   if(!vp || !laag) return;
   const w = vp.clientWidth, h = vp.clientHeight;
   kz.panX = Math.min(0, Math.max(w - w*kz.zoom, kz.panX));
   kz.panY = Math.min(0, Math.max(h - h*kz.zoom, kz.panY));
   laag.style.transform = `translate(${kz.panX}px, ${kz.panY}px) scale(${kz.zoom})`;
   vp.classList.toggle("kaart-viewport--gezoomd", kz.zoom > kz.min);
-  document.querySelectorAll("#kaartHotspots .hotspot").forEach(btn=>{
+  document.querySelectorAll(`#${naam}Hotspots .hotspot`).forEach(btn=>{
     const fx = parseFloat(btn.dataset.fx), fy = parseFloat(btn.dataset.fy);
     btn.style.left = (fx*w*kz.zoom + kz.panX) + "px";
     btn.style.top  = (fy*h*kz.zoom + kz.panY) + "px";
   });
 }
 
-function kaartZoomOm(px, py, nieuweZoom){
+function kaartZoomOm(naam, px, py, nieuweZoom){
+  const kz = kzState(naam);
   nieuweZoom = Math.min(kz.max, Math.max(kz.min, nieuweZoom));
   const mapX = (px - kz.panX) / kz.zoom, mapY = (py - kz.panY) / kz.zoom;
   kz.panX = px - mapX*nieuweZoom;
@@ -1849,23 +1866,24 @@ function kaartZoomOm(px, py, nieuweZoom){
   kz.zoom = nieuweZoom;
 }
 
-function kaartZoomStap(richting){
-  const vp = document.getElementById("kaartViewport");
+function kaartZoomStap(naam, richting){
+  const vp = document.getElementById(naam+"Viewport");
   if(!vp) return;
-  kaartZoomOm(vp.clientWidth/2, vp.clientHeight/2, kz.zoom * (richting > 0 ? 1.5 : 1/1.5));
-  kaartToepassenTransform();
+  const kz = kzState(naam);
+  kaartZoomOm(naam, vp.clientWidth/2, vp.clientHeight/2, kz.zoom * (richting > 0 ? 1.5 : 1/1.5));
+  kaartToepassenTransform(naam);
 }
 
-function kaartZoomReset(){
-  kz = {zoom:1, panX:0, panY:0, min:1, max:4};
-  kaartToepassenTransform();
+function kaartZoomReset(naam){
+  zoomStaten[naam] = {zoom:1, panX:0, panY:0, min:1, max:4};
+  kaartToepassenTransform(naam);
 }
 
-function kaartInitZoom(){
-  const vp = document.getElementById("kaartViewport");
+function kaartInitZoom(naam){
+  const vp = document.getElementById(naam+"Viewport");
   if(!vp) return;
-  kz = {zoom:1, panX:0, panY:0, min:1, max:4};
-  kaartToepassenTransform();
+  zoomStaten[naam] = {zoom:1, panX:0, panY:0, min:1, max:4};
+  kaartToepassenTransform(naam);
 
   const pointers = new Map();
   let sleept = false, sleepStart = null, vorigeAfstand = null, vorigCentrum = null;
@@ -1876,6 +1894,7 @@ function kaartInitZoom(){
     if(e.target.closest(".hotspot, .kaart-knoppen button")) return;
     try{ vp.setPointerCapture(e.pointerId); }catch(err){}
     pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+    const kz = kzState(naam);
     if(pointers.size === 1){
       sleept = true;
       sleepStart = {x:e.clientX, y:e.clientY, panX:kz.panX, panY:kz.panY};
@@ -1891,22 +1910,23 @@ function kaartInitZoom(){
   vp.addEventListener("pointermove", e=>{
     if(!pointers.has(e.pointerId)) return;
     pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+    const kz = kzState(naam);
     if(pointers.size === 1 && sleept && kz.zoom > kz.min){
       e.preventDefault();
       const p = pointers.get(e.pointerId);
       kz.panX = sleepStart.panX + (p.x - sleepStart.x);
       kz.panY = sleepStart.panY + (p.y - sleepStart.y);
-      kaartToepassenTransform();
+      kaartToepassenTransform(naam);
     } else if(pointers.size === 2){
       e.preventDefault();
       const [a,b] = [...pointers.values()];
       const rect = vp.getBoundingClientRect();
       const nieuweAfstand = afstand(a,b);
       const nieuwCentrum = centrum(a,b);
-      kaartZoomOm(nieuwCentrum.x-rect.left, nieuwCentrum.y-rect.top, kz.zoom * (nieuweAfstand/vorigeAfstand));
+      kaartZoomOm(naam, nieuwCentrum.x-rect.left, nieuwCentrum.y-rect.top, kz.zoom * (nieuweAfstand/vorigeAfstand));
       kz.panX += nieuwCentrum.x - vorigCentrum.x;
       kz.panY += nieuwCentrum.y - vorigCentrum.y;
-      kaartToepassenTransform();
+      kaartToepassenTransform(naam);
       vorigeAfstand = nieuweAfstand;
       vorigCentrum = nieuwCentrum;
     }
@@ -1924,14 +1944,16 @@ function kaartInitZoom(){
   vp.addEventListener("wheel", e=>{
     e.preventDefault();
     const rect = vp.getBoundingClientRect();
-    kaartZoomOm(e.clientX-rect.left, e.clientY-rect.top, kz.zoom * (e.deltaY < 0 ? 1.2 : 1/1.2));
-    kaartToepassenTransform();
+    const kz = kzState(naam);
+    kaartZoomOm(naam, e.clientX-rect.left, e.clientY-rect.top, kz.zoom * (e.deltaY < 0 ? 1.2 : 1/1.2));
+    kaartToepassenTransform(naam);
   }, {passive:false});
 
   vp.addEventListener("dblclick", e=>{
     const rect = vp.getBoundingClientRect();
-    kaartZoomOm(e.clientX-rect.left, e.clientY-rect.top, kz.zoom < kz.max ? Math.min(kz.max, kz.zoom*2) : kz.min);
-    kaartToepassenTransform();
+    const kz = kzState(naam);
+    kaartZoomOm(naam, e.clientX-rect.left, e.clientY-rect.top, kz.zoom < kz.max ? Math.min(kz.max, kz.zoom*2) : kz.min);
+    kaartToepassenTransform(naam);
   });
 }
 
@@ -2159,7 +2181,10 @@ function render(){
   document.getElementById("riem").innerHTML = RIEM.map(t=>
     `<button aria-current="${t.id===w}" onclick="naar('${t.id}')">${t.icoon}<span>${t.naam}</span></button>`
   ).join("");
-  if(w === "kaart") kaartInitZoom();
+  if(w === "kaart"){
+    kaartInitZoom("kaart");
+    if(document.getElementById("plattegrondViewport")) kaartInitZoom("plattegrond");
+  }
 }
 function naar(id){
   if(S.scene === "uitrusting_les" && id !== "uitrusting"){ S.weergave = id; render(); return; }
