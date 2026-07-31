@@ -1031,7 +1031,7 @@ const ROUTES = {
 };
 
 let reis = null;
-let winkel = null; // null | "smidse" — losse modale schermen, niet gebonden aan het reizen
+let winkel = null; // null | "smidse" | "karavaan" — losse modale schermen, niet gebonden aan het reizen
 
 function voorraadOverzicht(){
   const telling = {};
@@ -1307,6 +1307,84 @@ const DIEVEN_DUEL_CTX = {
     ga("hoofdstuk1");
   }
 };
+
+/* Herhaalbare karavaanbegeleiding, aangeboden door de karavaanmeester op
+   de plattegrond van Beversluis — los van de eenmalige hoofdstuk-1-scene. */
+const KARAVAAN_EENVOUDIG_CTX = {
+  plaatId:"karavaan",
+  kop:"De weg langs de Zwarte Ley", titel:"Boeren en hun waar",
+  vijandLabel:"De wegbandiet", vijandInfo:"kort zwaard, oud litteken",
+  raadFluisteraar:"Een van de wagenmenners, gespannen",
+  gewonnenTekst:[
+    "Hij gaat neer in de modder naast zijn eigen wapen en blijft liggen, wat verstandiger is dan opstaan.",
+    "De boeren tellen hun zakken koren. Niemand mist iets, en niemand bedankt je uitgebreider dan nodig."
+  ],
+  verlorenTekst:[
+    "Je wijkt te laat en de wond is dieper dan hij zich meteen voelt. De bandiet grist een zak van de achterste wagen en verdwijnt tussen de bomen.",
+    "De boeren rijden zwijgend verder. Wat ze kwijt zijn, kunnen ze zich niet veroorloven te missen."
+  ],
+  afGewonnen(){
+    S.munten += 14; S.eer += 1;
+    schrijf("Begeleidde een eenvoudige karavaan van boeren veilig over de Zwarte Ley.",2);
+    karavaanTerug();
+  },
+  afVerloren(){
+    S.munten += 4; S.eer = Math.max(0,S.eer-1);
+    schrijf("Kon niet voorkomen dat een boerenkaravaan bij de Zwarte Ley beroofd werd.",2);
+    karavaanTerug();
+  }
+};
+
+const KARAVAAN_WAARDEVOL_CTX = {
+  plaatId:"karavaan",
+  kop:"De weg langs de Zwarte Ley", titel:"Vracht die het risico waard is",
+  vijandLabel:"De bendeleider", vijandInfo:"goed staal, geoefend",
+  raadFluisteraar:"De karavaanmeester, met een hand op zijn kist",
+  gewonnenTekst:[
+    "Hij is beter dan zijn mannen, en nog altijd niet goed genoeg. Hij valt, en de rest van de bende wacht niet op een tweede reden om te blijven.",
+    "De karavaanmeester opent de kist pas als jullie binnen de poort zijn. Alles is er nog. Hij telt het toch."
+  ],
+  verlorenTekst:[
+    "Hij is sneller dan de anderen waren, en dat kost je meer dan een schram. De bende grijpt wat ze kunnen dragen voor je manschappen bij kunnen komen.",
+    "De karavaanmeester zegt niets. Het verlies zegt genoeg."
+  ],
+  afGewonnen(){
+    S.munten += 40; S.eer += 3;
+    schrijf("Begeleidde kostbare lading veilig over de Zwarte Ley, tegen een goed bewapende bende.",2);
+    karavaanTerug();
+  },
+  afVerloren(){
+    S.munten += 10; S.eer = Math.max(0,S.eer-2);
+    schrijf("Verloor een deel van een kostbare lading aan een goed bewapende bende bij de Zwarte Ley.",2);
+    karavaanTerug();
+  }
+};
+
+function karavaanVoorwaardenWaardevol(){
+  const getraind = S.manschappen.filter(m=>m.opleiding===2).length;
+  if(getraind < 5) return `Minstens 5 doorgeharde manschappen nodig — nu ${getraind}.`;
+  if(ontzag() < 6) return `Meer ontzag nodig dan je nu uitstraalt (${ontzag()}, minstens 6).`;
+  return null;
+}
+
+function karavaanOpenen(){ winkel = "karavaan"; render(); }
+
+function karavaanStart(ctx, zwaar){
+  winkel = null;
+  S.scene = "duel"; S.weergave = "verhaal";
+  duelStart(ctx);
+  if(zwaar){
+    duel.vijand += 2;
+    duel.log.unshift({t:"Dit zijn geen amateurs. Wie kostbare lading durft te beroven, weet wat hij doet.",k:""});
+  }
+  bewaar(); render(); window.scrollTo({top:0,behavior:"instant"});
+}
+
+function karavaanTerug(){
+  S.scene = "hoofdstuk1";
+  S.weergave = "kaart";
+  bewaar(); render(); window.scrollTo({top:0,behavior:"instant"});
+}
 
 function duelStart(ctx){
   duel = {
@@ -1722,6 +1800,9 @@ function toonKaartReizen(){
         <button class="hotspot" type="button" onclick="smidseOpenen()" style="left:74.2%;top:56.6%" title="De Smidse">
           <span class="merk">${KRUISJE_SVG}</span><span class="label">Smidse</span>
         </button>
+        <button class="hotspot" type="button" onclick="karavaanOpenen()" style="left:66%;top:72.3%" title="De Karavaanmeester">
+          <span class="merk">${KRUISJE_SVG}</span><span class="label">Karavaanmeester</span>
+        </button>
       </div>`;
     }
   }
@@ -1733,6 +1814,7 @@ function toonKaartReizen(){
   else if(reis && reis.fase === "onderweg" && reis.wegkapelLeeg) h += tussendoorWegkapelLeeg();
   else if(reis && reis.fase === "onderweg" && reis.gebeurtenis) h += tussendoorGebeurtenis();
   if(winkel === "smidse") h += tussendoorSmidse();
+  if(winkel === "karavaan") h += tussendoorKaravaan();
   return h;
 }
 
@@ -1924,6 +2006,22 @@ function tussendoorSmidse(){
       Object.entries(telling).map(([id,n])=>`${VOORRAADWAPENS[id].naam}${n>1?` ×${n}`:""}`).join(", ")
     }</p>` : "") + `
     <p style="margin-top:.8rem"><button class="knop knop--stil" onclick="winkelSluiten()">Genoeg voor vandaag.</button></p>
+  </div></div>`;
+}
+
+function tussendoorKaravaan(){
+  const blokkade = karavaanVoorwaardenWaardevol();
+  return `<div class="overlay-achtergrond"><div class="overlay-blad">
+    <p class="kop">De Karavaanmeester, Beversluis</p><h1>Wie begeleid je vandaag?</h1>
+    ${plaat("karavaan")}
+    <p>De karavaanmeester heeft altijd twee soorten vracht: wat een boer zich niet kan veroorloven te missen, en wat een stad zich niet kan veroorloven te missen. Voor het een volstaat een zwaard. Voor het ander wil hij mannen zien, niet alleen een naam.</p>
+    <div class="keuzes" style="margin-top:.4rem">
+      <button class="keuze" onclick="karavaanStart(KARAVAAN_EENVOUDIG_CTX,false)">Eenvoudige karavaan.<small>Boeren met goederen. Weinig risico, weinig loon — 14 penningen.</small></button>
+      ${blokkade
+        ? `<button class="keuze" disabled style="opacity:.5;border-left-color:var(--perkament-schaduw)">Waardevolle lading.<small>${blokkade}</small></button>`
+        : `<button class="keuze" onclick="karavaanStart(KARAVAAN_WAARDEVOL_CTX,true)">Waardevolle lading.<small>Een goed bewapende bende, maar 40 penningen als je ze afslaat.</small></button>`}
+    </div>
+    <p style="margin-top:.8rem"><button class="knop knop--stil" onclick="winkelSluiten()">Niet vandaag.</button></p>
   </div></div>`;
 }
 
