@@ -158,6 +158,10 @@ button{font:inherit;cursor:pointer}
 .kaart .mist{fill:var(--perkament-diep);opacity:.94}
 .kaart-viewport{position:relative;overflow:hidden;aspect-ratio:1448/1086;background:#d8c493;border:1px solid var(--perkament-schaduw);touch-action:pan-y;cursor:grab}
 .kaart-viewport--plattegrond{margin:.7rem 0 0}
+.dorp-grid{position:absolute;display:grid;gap:1px}
+.dorp-vak{position:relative;border:0;padding:0;margin:0;background:none;cursor:pointer;overflow:hidden}
+.dorp-vak img{width:100%;height:100%;display:block;object-fit:cover}
+.dorp-vak:hover img,.dorp-vak:focus-visible img{filter:brightness(1.18)}
 .kaart-viewport--gezoomd{touch-action:none;cursor:grab}
 .kaart-viewport--sleept{cursor:grabbing}
 .kaart-zoom{position:absolute;top:0;left:0;width:100%;height:100%;transform-origin:0 0}
@@ -230,6 +234,7 @@ textarea,input[type=password]{width:100%;font:inherit;background:rgba(255,255,25
 <body>
 <div class="ontwikkel">
   <button class="herstart" onclick="springNaarKaart()" title="Sla de proloog over en spring direct naar de kaart in Beversluis">⇥ Naar de kaart</button>
+  <button class="herstart" onclick="dorpOpenen()" title="Spring direct naar de Zandboks, het sandbox-dorp ten noorden van de Zwarte Ley">⇥ Naar de Zandboks</button>
   <button id="herstart" class="herstart" onclick="opnieuw()" title="Wis de kroniek en begin opnieuw bij de smidse">⟲ Herstart</button>
 </div>
 <main id="app" aria-live="polite"></main>
@@ -275,6 +280,11 @@ const ASSETS = {
   wegkapel_leeg: "assets/scene/wegkapel-leeg.webp",
   wachtpost: "assets/scene/wachtpost.webp",
   vier_eiken_dorp: "assets/scene/vier-eiken-dorp.webp",
+  zandboks_plattegrond: "assets/kaarten/zandboks-plattegrond.webp",
+  dorp_grond: "assets/dorp/onbebouwde-grond.webp",
+  dorp_tent: "assets/dorp/tent.webp",
+  dorp_hut: "assets/dorp/houten-hut.webp",
+  dorp_vuur: "assets/dorp/vuurtje.webp",
   smidse_beversluis: "assets/scene/smidse-beversluis.webp",
   smidse:      "assets/scene/smidse.webp",
   vier_eiken:  "assets/scene/vier-eiken.webp",
@@ -481,6 +491,7 @@ function nieuweStaat(){
     dracht: {onder:"linnen_hemd", midden:"gelapt_wambuis", harnas:null, wapen:null},
     kist: ["linnen_hemd","gelapt_wambuis","jachtmes"],
     voorraad: [],
+    dorp: {grid: []},
     manschappen: [],
     inschrijvingen: [
       {tekst:"Renze, zoon van Wibbe de smid, van Hooiveld. Zeventien winters.", hand:1},
@@ -1444,6 +1455,56 @@ function karavaanTerug(){
   bewaar(); render(); window.scrollTo({top:0,behavior:"instant"});
 }
 
+/* ---------------------------------------------------------------------
+   5e. DE ZANDBOKS — sandbox-dorp ten noorden van de Zwarte Ley (proef).
+   Losse wereld, bereikt via de ontwikkelknop; zelfde S (geld, manschappen,
+   voorraad) blijft gewoon gelden, dus "meenemen" over de brug is gratis.
+   --------------------------------------------------------------------- */
+const DORP_KOLOMMEN = 8, DORP_RIJEN = 6;
+const DORPGEBOUWEN = {
+  tent: {naam:"Tent", plaatje:"dorp_tent", prijs:5, noot:"Onderdak voor een handvol mannen. Snel opgezet, net zo snel weer weg."},
+  hut:  {naam:"Houten hut", plaatje:"dorp_hut", prijs:15, noot:"Steviger, blijvender. Ruimte voor meer manschappen."},
+  vuur: {naam:"Kampvuur", plaatje:"dorp_vuur", prijs:3, noot:"Het middelpunt van het kamp, waar het leger zich verzamelt."}
+};
+if(!S.dorp || !Array.isArray(S.dorp.grid) || S.dorp.grid.length !== DORP_KOLOMMEN*DORP_RIJEN){
+  S.dorp = {grid: new Array(DORP_KOLOMMEN*DORP_RIJEN).fill(null)};
+}
+
+let dorpSelectie = null;
+
+function dorpOpenen(){
+  S.weergave = "dorp";
+  bewaar(); render(); window.scrollTo({top:0});
+}
+function dorpTerug(){
+  S.weergave = "kaart";
+  dorpSelectie = null;
+  bewaar(); render(); window.scrollTo({top:0});
+}
+function dorpVakjeKiezen(i){
+  dorpSelectie = i;
+  render();
+}
+function dorpMenuSluiten(){
+  dorpSelectie = null;
+  render();
+}
+function dorpBouwen(id){
+  if(dorpSelectie === null) return;
+  const gebouw = DORPGEBOUWEN[id];
+  if(!gebouw || S.munten < gebouw.prijs || S.dorp.grid[dorpSelectie]) return;
+  S.munten -= gebouw.prijs;
+  S.dorp.grid[dorpSelectie] = id;
+  dorpSelectie = null;
+  bewaar(); render();
+}
+function dorpSlopen(){
+  if(dorpSelectie === null) return;
+  S.dorp.grid[dorpSelectie] = null;
+  dorpSelectie = null;
+  bewaar(); render();
+}
+
 const HERBERG_GERUCHTEN = [
   "Er wordt gezegd dat de tollenaar zelf een graankar liet beroven om de verzekering te innen.",
   "Een reiziger zweert dat hij bij Vier Eiken een ridder met een rode baard zag vechten tegen drie man tegelijk. Het waren er twee, en hij stond er slecht bij.",
@@ -2026,7 +2087,7 @@ function kaartInitZoom(naam){
   const centrum = (a,b) => ({x:(a.x+b.x)/2, y:(a.y+b.y)/2});
 
   vp.addEventListener("pointerdown", e=>{
-    if(e.target.closest(".hotspot, .kaart-knoppen button")) return;
+    if(e.target.closest(".hotspot, .kaart-knoppen button, .dorp-vak")) return;
     try{ vp.setPointerCapture(e.pointerId); }catch(err){}
     pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
     const kz = kzState(naam);
@@ -2263,6 +2324,60 @@ function tussendoorVierEikenHout(){
   </div></div>`;
 }
 
+function toonDorp(){
+  let h = `<article class="blad"><p class="kop">Ten noorden van de Zwarte Ley</p><h1>De Zandboks</h1>
+    <p>Hier begint het kamp dat ooit een dorp moet worden — waar Renzes leger huist, ver van de blikken van Beversluis. Nog is het meeste vlakte.</p>
+    <div class="kaart-viewport kaart-viewport--plattegrond" id="zandboksViewport">
+      <div class="kaart-zoom" id="zandboksZoom">
+        <img class="kaart" src="${ASSETS.zandboks_plattegrond}" alt="De Zandboks, ten noorden van de Zwarte Ley" onerror="this.remove()">
+        <div class="dorp-grid" style="left:26.25%;top:18.42%;width:52.48%;height:55.25%;grid-template-columns:repeat(${DORP_KOLOMMEN},1fr);grid-template-rows:repeat(${DORP_RIJEN},1fr)">
+          ${S.dorp.grid.map((cel,i)=>{
+            const naam = cel ? DORPGEBOUWEN[cel].naam : "Lege grond";
+            const plaatje = ASSETS[cel ? DORPGEBOUWEN[cel].plaatje : "dorp_grond"];
+            return `<button class="dorp-vak" type="button" onclick="dorpVakjeKiezen(${i})" title="${naam}">
+              <img src="${plaatje}" alt="${naam}">
+            </button>`;
+          }).join("")}
+        </div>
+      </div>
+      <div class="kaart-knoppen">
+        <button type="button" onclick="kaartZoomStap('zandboks',1)" aria-label="Inzoomen">+</button>
+        <button type="button" onclick="kaartZoomStap('zandboks',-1)" aria-label="Uitzoomen">−</button>
+        <button type="button" onclick="kaartZoomReset('zandboks')" aria-label="Kaart passend maken">⤢</button>
+      </div>
+    </div>
+    <p class="cijfers" style="margin-top:.6rem">Penningen: ${S.munten} · Manschappen: ${S.manschappen.length}</p>
+    <p style="margin-top:.6rem"><button class="knop knop--stil" onclick="dorpTerug()">Terug over de brug.</button></p>
+  </article>`;
+  if(dorpSelectie !== null) h += tussendoorDorpVak();
+  return h;
+}
+
+function tussendoorDorpVak(){
+  const i = dorpSelectie;
+  const huidig = S.dorp.grid[i];
+  if(huidig){
+    const info = DORPGEBOUWEN[huidig];
+    return `<div class="overlay-achtergrond"><div class="overlay-blad">
+      <p class="kop">De Zandboks</p><h1>${info.naam}</h1>
+      <p>${info.noot}</p>
+      <div class="keuzes" style="margin-top:.4rem">
+        <button class="keuze" onclick="dorpSlopen()">Afbreken.<small>Het vakje wordt weer lege grond.</small></button>
+      </div>
+      <p style="margin-top:.8rem"><button class="knop knop--stil" onclick="dorpMenuSluiten()">Sluiten.</button></p>
+    </div></div>`;
+  }
+  return `<div class="overlay-achtergrond"><div class="overlay-blad">
+    <p class="kop">De Zandboks</p><h1>Wat bouw je hier?</h1>
+    <p class="cijfers">Penningen: ${S.munten}</p>
+    <div class="keuzes" style="margin-top:.4rem">` + Object.entries(DORPGEBOUWEN).map(([id,g])=>{
+      const kan = S.munten >= g.prijs;
+      return `<button class="keuze" ${kan?"":"disabled"} style="${kan?"":"opacity:.5"}" onclick="dorpBouwen('${id}')">${g.naam} — ${g.prijs}p<small>${g.noot}</small></button>`;
+    }).join("") + `</div>
+    <p style="margin-top:.8rem"><button class="knop knop--stil" onclick="dorpMenuSluiten()">Toch niet.</button></p>
+  </div></div>`;
+}
+
 function tussendoorRoute(){
   const naar = PLAATSEN[reis.naar];
   const opties = ROUTES[routeKey(S.locatie, reis.naar)] || [];
@@ -2393,6 +2508,7 @@ function render(){
     w === "vel"        ? toonVel() :
     w === "uitrusting" ? toonUitrusting() :
     w === "leger"      ? toonLeger() :
+    w === "dorp"       ? toonDorp() :
                          toonVerhaal();
   document.getElementById("riem").innerHTML = RIEM.map(t=>
     `<button aria-current="${t.id===w}" onclick="naar('${t.id}')">${t.icoon}<span>${t.naam}</span></button>`
@@ -2402,6 +2518,7 @@ function render(){
     if(document.getElementById("plattegrondViewport")) kaartInitZoom("plattegrond");
     if(document.getElementById("viereikenViewport")) kaartInitZoom("viereiken");
   }
+  if(w === "dorp") kaartInitZoom("zandboks");
 }
 function naar(id){
   if(S.scene === "uitrusting_les" && id !== "uitrusting"){ S.weergave = id; render(); return; }
