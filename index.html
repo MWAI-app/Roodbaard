@@ -153,14 +153,14 @@ button{font:inherit;cursor:pointer}
 .raad{font-family:var(--hand);color:var(--inkt-tweede)}
 
 /* ---------- Kaart ---------- */
-.kaart{width:100%;height:100%;display:block}
+.kaart{width:100%;height:100%;display:block;-webkit-user-drag:none;user-drag:none;-webkit-touch-callout:none;user-select:none}
 .kaart text{font-family:var(--kapitaal);font-size:26px;fill:var(--inkt);letter-spacing:.08em}
 .kaart .mist{fill:var(--perkament-diep);opacity:.94}
 .kaart-viewport{position:relative;overflow:hidden;aspect-ratio:1448/1086;background:#d8c493;border:1px solid var(--perkament-schaduw);touch-action:pan-y;cursor:grab}
 .kaart-viewport--plattegrond{margin:.7rem 0 0}
 .dorp-grid{position:absolute;display:grid;gap:1px}
 .dorp-vak{position:relative;border:0;padding:0;margin:0;background:none;cursor:pointer;overflow:hidden}
-.dorp-vak img{width:100%;height:100%;display:block;object-fit:cover}
+.dorp-vak img{width:100%;height:100%;display:block;object-fit:cover;-webkit-user-drag:none;user-drag:none;-webkit-touch-callout:none;user-select:none}
 .dorp-vak:hover img,.dorp-vak:focus-visible img{filter:brightness(1.18)}
 .kaart-viewport--gezoomd{touch-action:none;cursor:grab}
 .kaart-viewport--sleept{cursor:grabbing}
@@ -2142,7 +2142,7 @@ function toonKaartReizen(){
     if(S.locatie === "beversluis"){
       h += `<div class="kaart-viewport kaart-viewport--plattegrond" id="plattegrondViewport">
         <div class="kaart-zoom" id="plattegrondZoom">
-          <img class="kaart" src="${ASSETS.beversluis_plattegrond}" alt="Plattegrond van Beversluis" onerror="this.remove()">
+          <img class="kaart" src="${ASSETS.beversluis_plattegrond}" alt="Plattegrond van Beversluis" draggable="false" onerror="this.remove()">
         </div>
         <div class="kaart-hotspots" id="plattegrondHotspots">
           <button class="hotspot" type="button" onclick="smidseOpenen()" data-fx="0.742" data-fy="0.566" title="De Smidse">
@@ -2167,7 +2167,7 @@ function toonKaartReizen(){
     } else if(S.locatie === "vier_eiken"){
       h += `<div class="kaart-viewport kaart-viewport--plattegrond" id="viereikenViewport">
         <div class="kaart-zoom" id="viereikenZoom">
-          <img class="kaart" src="${ASSETS.vier_eiken_dorp}" alt="Vier Eiken, bij de houtstapel" onerror="this.remove()">
+          <img class="kaart" src="${ASSETS.vier_eiken_dorp}" alt="Vier Eiken, bij de houtstapel" draggable="false" onerror="this.remove()">
         </div>
         <div class="kaart-hotspots" id="viereikenHotspots">
           <button class="hotspot" type="button" onclick="vierEikenManOpenen()" data-fx="0.642" data-fy="0.507" title="De man met de riek">
@@ -2263,11 +2263,21 @@ function kaartInitZoom(naam){
 
   const pointers = new Map();
   let sleept = false, sleepStart = null, vorigeAfstand = null, vorigCentrum = null;
+  let vakPointerId = null, vakStart = null, vakSleept = false, vakJustDragged = false;
+  const vakDrempel = 8;
   const afstand = (a,b) => Math.hypot(a.x-b.x, a.y-b.y);
   const centrum = (a,b) => ({x:(a.x+b.x)/2, y:(a.y+b.y)/2});
 
   vp.addEventListener("pointerdown", e=>{
-    if(e.target.closest(".hotspot, .kaart-knoppen button, .dorp-vak")) return;
+    if(e.target.closest(".hotspot, .kaart-knoppen button")) return;
+    const vak = e.target.closest(".dorp-vak");
+    if(vak && pointers.size === 0){
+      vakPointerId = e.pointerId;
+      vakStart = {x:e.clientX, y:e.clientY};
+      vakSleept = false;
+      pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+      return;
+    }
     try{ vp.setPointerCapture(e.pointerId); }catch(err){}
     pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
     const kz = kzState(naam);
@@ -2283,7 +2293,26 @@ function kaartInitZoom(naam){
     }
   });
 
+  vp.addEventListener("click", e=>{
+    if(vakJustDragged && e.target.closest(".dorp-vak")){
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    vakJustDragged = false;
+  }, true);
+
   vp.addEventListener("pointermove", e=>{
+    if(e.pointerId === vakPointerId && !vakSleept){
+      const kz = kzState(naam);
+      if(kz.zoom <= kz.min){ vakPointerId = null; return; }
+      const dx = e.clientX - vakStart.x, dy = e.clientY - vakStart.y;
+      if(Math.hypot(dx,dy) < vakDrempel) return;
+      vakSleept = true;
+      try{ vp.setPointerCapture(e.pointerId); }catch(err){}
+      sleept = true;
+      sleepStart = {x:vakStart.x, y:vakStart.y, panX:kz.panX, panY:kz.panY};
+      vp.classList.add("kaart-viewport--sleept");
+    }
     if(!pointers.has(e.pointerId)) return;
     pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
     const kz = kzState(naam);
@@ -2309,6 +2338,10 @@ function kaartInitZoom(naam){
   });
 
   function loslaten(e){
+    if(e.pointerId === vakPointerId){
+      vakJustDragged = vakSleept;
+      vakPointerId = null; vakSleept = false;
+    }
     pointers.delete(e.pointerId);
     if(pointers.size < 2){ vorigeAfstand = null; vorigCentrum = null; }
     if(pointers.size === 0){ sleept = false; vp.classList.remove("kaart-viewport--sleept"); }
@@ -2510,12 +2543,12 @@ function toonDorp(){
     <p>Hier begint het kamp dat ooit een dorp moet worden — waar Renzes leger huist, ver van de blikken van Beversluis. Nog is het meeste vlakte.</p>
     <div class="kaart-viewport kaart-viewport--plattegrond" id="zandboksViewport">
       <div class="kaart-zoom" id="zandboksZoom">
-        <img class="kaart" src="${ASSETS.zandboks_plattegrond}" alt="De Zandboks, ten noorden van de Zwarte Ley" onerror="this.remove()">
+        <img class="kaart" src="${ASSETS.zandboks_plattegrond}" alt="De Zandboks, ten noorden van de Zwarte Ley" draggable="false" onerror="this.remove()">
         <div class="dorp-grid" style="left:26.25%;top:18.42%;width:52.48%;height:55.25%;grid-template-columns:repeat(${DORP_KOLOMMEN},1fr);grid-template-rows:repeat(${DORP_RIJEN},1fr)">
           ${S.dorp.grid.map((cel,i)=>{
             const naam = cel ? DORPGEBOUWEN[cel.type].naam : "Lege grond";
             return `<button class="dorp-vak" type="button" onclick="dorpVakjeKiezen(${i})" title="${naam}">
-              <img src="${dorpPlaatjeVoorCel(cel)}" alt="${naam}">
+              <img src="${dorpPlaatjeVoorCel(cel)}" alt="${naam}" draggable="false">
             </button>`;
           }).join("")}
         </div>
