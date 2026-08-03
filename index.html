@@ -1561,15 +1561,18 @@ function dorpHeeftGebouw(type){ return S.dorp.grid.some(c=>c && c.type===type); 
 function dorpCapaciteit(){
   return S.dorp.grid.reduce((t,c)=> t + (c && DORP_CAPACITEIT[c.type] ? DORP_CAPACITEIT[c.type] : 0), 0);
 }
-function dorpPlaatjeVoorCel(cel){
-  if(!cel) return ASSETS.dorp_grond;
+function dorpPlaatjeIdVoorCel(cel){
+  if(!cel) return "dorp_grond";
   if(cel.type === "wachttoren"){
-    return ASSETS[cel.stand==="schutters" ? "dorp_wachttoren_schutters" : cel.stand==="wacht" ? "dorp_wachttoren_wachter" : "dorp_wachttoren"];
+    return cel.stand==="schutters" ? "dorp_wachttoren_schutters" : cel.stand==="wacht" ? "dorp_wachttoren_wachter" : "dorp_wachttoren";
   }
   if(cel.type === "rondetafel"){
-    return ASSETS[S.dorp.zelfbestuur ? "dorp_rondetafel_oudsten" : "dorp_rondetafel"];
+    return S.dorp.zelfbestuur ? "dorp_rondetafel_oudsten" : "dorp_rondetafel";
   }
-  return ASSETS[DORPGEBOUWEN[cel.type].plaatje];
+  return DORPGEBOUWEN[cel.type].plaatje;
+}
+function dorpPlaatjeVoorCel(cel){
+  return ASSETS[dorpPlaatjeIdVoorCel(cel)];
 }
 
 function dorpVolgendeDag(){
@@ -2258,7 +2261,7 @@ function kaartZoomReset(naam){
 function kaartInitZoom(naam){
   const vp = document.getElementById(naam+"Viewport");
   if(!vp) return;
-  zoomStaten[naam] = {zoom:1, panX:0, panY:0, min:1, max:4};
+  zoomStaten[naam] = {zoom:1, panX:0, panY:0, min:1, max: naam==="zandboks" ? 9 : 4};
   kaartToepassenTransform(naam);
 
   const pointers = new Map();
@@ -2576,6 +2579,7 @@ function tussendoorDorpVak(){
   if(!cel){
     return `<div class="overlay-achtergrond"><div class="overlay-blad">
       <p class="kop">De Zandboks</p><h1>Wat bouw je hier?</h1>
+      ${plaat(dorpPlaatjeIdVoorCel(cel))}
       <p class="cijfers">Penningen: ${S.munten}</p>
       <div class="keuzes" style="margin-top:.4rem">` + Object.entries(DORPGEBOUWEN).map(([id,g])=>{
         const kan = S.munten >= g.prijs;
@@ -2647,6 +2651,7 @@ function tussendoorDorpVak(){
 
   return `<div class="overlay-achtergrond"><div class="overlay-blad">
     <p class="kop">De Zandboks</p><h1>${info.naam}</h1>
+    ${plaat(dorpPlaatjeIdVoorCel(cel))}
     ${inhoud}
     ${acties}
     <hr class="regel">
