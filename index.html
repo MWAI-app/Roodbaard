@@ -285,6 +285,19 @@ const ASSETS = {
   dorp_tent: "assets/dorp/tent.webp",
   dorp_hut: "assets/dorp/houten-hut.webp",
   dorp_vuur: "assets/dorp/vuurtje.webp",
+  dorp_graanschuur: "assets/dorp/graanschuur.webp",
+  dorp_mijnbouwput: "assets/dorp/mijnbouwput.webp",
+  dorp_mijnbouwtoren: "assets/dorp/mijnbouwtoren.webp",
+  dorp_vaandeltent: "assets/dorp/vaandeltent.webp",
+  dorp_voederplaats: "assets/dorp/voederplaats.webp",
+  dorp_waterput: "assets/dorp/waterput.webp",
+  dorp_groepstent: "assets/dorp/groepstent.webp",
+  dorp_rondetafel: "assets/dorp/rondetafel.webp",
+  dorp_rondetafel_soldaten: "assets/dorp/rondetafel-soldaten.webp",
+  dorp_rondetafel_oudsten: "assets/dorp/rondetafel-oudsten.webp",
+  dorp_wachttoren: "assets/dorp/wachttoren.webp",
+  dorp_wachttoren_wachter: "assets/dorp/wachttoren-wachter.webp",
+  dorp_wachttoren_schutters: "assets/dorp/wachttoren-schutters.webp",
   smidse_beversluis: "assets/scene/smidse-beversluis.webp",
   smidse:      "assets/scene/smidse.webp",
   vier_eiken:  "assets/scene/vier-eiken.webp",
@@ -460,7 +473,9 @@ const OPLEIDINGKOSTEN = [10,25];
 const VOORRAADWAPENS = {
   korte_piek:       {naam:"Korte piek",       laag:"wapen", prijs:8,  gewicht:2, ontzag:1, opval:1, bereik:1, kracht:2, noot:"Smidswerk, geen siersmeedwerk. Doet wat het moet."},
   smidshandbijl:    {naam:"Smidshandbijl",    laag:"wapen", prijs:12, gewicht:2, ontzag:1, opval:1, bereik:1, kracht:3, noot:"Vers gehard. Nog geen naam waard."},
-  eenvoudig_zwaard: {naam:"Eenvoudig zwaard", laag:"wapen", prijs:22, gewicht:3, ontzag:2, opval:2, bereik:2, kracht:4, noot:"Geen Zwaard van Weel. Een zwaard, wel."}
+  eenvoudig_zwaard: {naam:"Eenvoudig zwaard", laag:"wapen", prijs:22, gewicht:3, ontzag:2, opval:2, bereik:2, kracht:4, noot:"Geen Zwaard van Weel. Een zwaard, wel."},
+  boog:             {naam:"Boog",             laag:"wapen", prijs:14, gewicht:2, ontzag:1, opval:2, bereik:3, kracht:3, noot:"Op afstand, als je durft te wachten.", schutter:true},
+  kruisboog:        {naam:"Kruisboog",        laag:"wapen", prijs:26, gewicht:3, ontzag:2, opval:2, bereik:3, kracht:5, noot:"Traag om te laden, dodelijk als het raak is.", schutter:true}
 };
 function itemInfo(id){ return ITEMS[id] || VOORRAADWAPENS[id]; }
 function manschapWapenInfo(id){ return VOLGWAPEN[id] || VOORRAADWAPENS[id]; }
@@ -519,7 +534,7 @@ function bewaar(){ OPSLAG.schrijf(S); }
 function gedragen(){ return ["onder","midden","harnas","wapen"].map(l=>S.dracht[l]).filter(Boolean).map(i=>itemInfo(i)); }
 function som(veld){ return gedragen().reduce((t,i)=>t+(i[veld]||0),0); }
 function uithouding(){ return Math.max(2, 12 - som("gewicht")); }
-function ontzag(){ return som("ontzag"); }
+function ontzag(){ return som("ontzag") + (dorpHeeftGebouw("vaandeltent") ? 2 : 0); }
 function onopvallend(){ return Math.max(0, 10 - som("opval")); }
 function bereik(){ const w = S.dracht.wapen; return w ? (itemInfo(w).bereik||0) : 0; }
 
@@ -1459,16 +1474,37 @@ function karavaanTerug(){
    5e. DE ZANDBOKS — sandbox-dorp ten noorden van de Zwarte Ley (proef).
    Losse wereld, bereikt via de ontwikkelknop; zelfde S (geld, manschappen,
    voorraad) blijft gewoon gelden, dus "meenemen" over de brug is gratis.
+   Tijd verstrijkt hier niet vanzelf: de speler klikt zelf "Volgende dag"
+   om onderweg-taken (graan halen, mijnbouw-productie) te laten vorderen.
    --------------------------------------------------------------------- */
 const DORP_KOLOMMEN = 8, DORP_RIJEN = 6;
+const DORP_CAPACITEIT = {tent:4, hut:6, groepstent:12};
 const DORPGEBOUWEN = {
-  tent: {naam:"Tent", plaatje:"dorp_tent", prijs:5, noot:"Onderdak voor een handvol mannen. Snel opgezet, net zo snel weer weg."},
-  hut:  {naam:"Houten hut", plaatje:"dorp_hut", prijs:15, noot:"Steviger, blijvender. Ruimte voor meer manschappen."},
-  vuur: {naam:"Kampvuur", plaatje:"dorp_vuur", prijs:3, noot:"Het middelpunt van het kamp, waar het leger zich verzamelt."}
+  tent:           {naam:"Tent", plaatje:"dorp_tent", prijs:5, noot:"Onderdak voor een handvol mannen. Snel opgezet, net zo snel weer weg."},
+  hut:            {naam:"Houten hut", plaatje:"dorp_hut", prijs:15, noot:"Steviger, blijvender. Ruimte voor meer manschappen."},
+  vuur:           {naam:"Kampvuur", plaatje:"dorp_vuur", prijs:3, noot:"Het middelpunt van het kamp, waar het leger zich verzamelt."},
+  graanschuur:    {naam:"Graanschuur", plaatje:"dorp_graanschuur", prijs:20, noot:"Begint leeg. Stuur manschappen op pad om hem te vullen."},
+  mijnbouw_put:   {naam:"Mijnbouwput", plaatje:"dorp_mijnbouwput", prijs:18, noot:"Kleine productie. Plaats voor 3 mijnwerkers."},
+  mijnbouw_toren: {naam:"Mijnbouwtoren", plaatje:"dorp_mijnbouwtoren", prijs:60, noot:"Grote productie. Plaats voor 10 mijnwerkers."},
+  wachttoren:     {naam:"Wachttoren", plaatje:"dorp_wachttoren", prijs:25, noot:"Onbewaakt tot je er manschappen op zet."},
+  rondetafel:     {naam:"Ronde tafel", plaatje:"dorp_rondetafel", prijs:35, noot:"Waar Renze bijeenkomsten en de dorpsraad houdt."},
+  groepstent:     {naam:"Groepstent", plaatje:"dorp_groepstent", prijs:30, noot:"Slaapplaats voor tot twaalf soldaten."},
+  vaandeltent:    {naam:"Vaandeltent", plaatje:"dorp_vaandeltent", prijs:40, noot:"Renzes eigen tent. Uitstraling en macht."},
+  voederplaats:   {naam:"Voederplaats", plaatje:"dorp_voederplaats", prijs:8, noot:"Houdt Vroeg gezond en sterk."},
+  waterput:       {naam:"Waterput", plaatje:"dorp_waterput", prijs:10, noot:"Geen water meer hoeven halen in het dorp."}
 };
-if(!S.dorp || !Array.isArray(S.dorp.grid) || S.dorp.grid.length !== DORP_KOLOMMEN*DORP_RIJEN){
-  S.dorp = {grid: new Array(DORP_KOLOMMEN*DORP_RIJEN).fill(null)};
+if(!S.dorp || !Array.isArray(S.dorp.grid) || S.dorp.grid.length !== DORP_KOLOMMEN*DORP_RIJEN
+   || S.dorp.grid.some(c=>typeof c === "string")){
+  S.dorp = {
+    grid: new Array(DORP_KOLOMMEN*DORP_RIJEN).fill(null),
+    dag: 0,
+    zelfbestuur: false,
+    grondstoffen: {steenkool:0, ijzer:0, goud:0}
+  };
 }
+if(!S.dorp.grondstoffen) S.dorp.grondstoffen = {steenkool:0, ijzer:0, goud:0};
+if(typeof S.dorp.dag !== "number") S.dorp.dag = 0;
+if(typeof S.dorp.zelfbestuur !== "boolean") S.dorp.zelfbestuur = false;
 
 let dorpSelectie = null;
 
@@ -1494,13 +1530,146 @@ function dorpBouwen(id){
   const gebouw = DORPGEBOUWEN[id];
   if(!gebouw || S.munten < gebouw.prijs || S.dorp.grid[dorpSelectie]) return;
   S.munten -= gebouw.prijs;
-  S.dorp.grid[dorpSelectie] = id;
+  const cel = {type:id};
+  if(id === "graanschuur"){ cel.vol = 0; cel.onderweg = null; }
+  if(id === "mijnbouw_put" || id === "mijnbouw_toren"){ cel.grondstof = null; cel.werkers = 0; }
+  if(id === "wachttoren"){ cel.stand = "leeg"; cel.bemanning = []; }
+  S.dorp.grid[dorpSelectie] = cel;
   dorpSelectie = null;
+  schrijf(`Bouwde een ${gebouw.naam.toLowerCase()} in de Zandboks.`,2);
   bewaar(); render();
 }
 function dorpSlopen(){
   if(dorpSelectie === null) return;
+  const cel = S.dorp.grid[dorpSelectie];
+  if(cel){
+    const namen = [];
+    if(cel.onderweg) namen.push(cel.onderweg.naam);
+    if(cel.bemanning) namen.push(...cel.bemanning);
+    namen.forEach(naam=>{
+      const m = S.manschappen.find(m=>m.naam===naam);
+      if(m) m.opdracht = null;
+    });
+  }
   S.dorp.grid[dorpSelectie] = null;
+  dorpSelectie = null;
+  bewaar(); render();
+}
+
+function manschapBeschikbaar(m){ return !m.opdracht; }
+function dorpHeeftGebouw(type){ return S.dorp.grid.some(c=>c && c.type===type); }
+function dorpCapaciteit(){
+  return S.dorp.grid.reduce((t,c)=> t + (c && DORP_CAPACITEIT[c.type] ? DORP_CAPACITEIT[c.type] : 0), 0);
+}
+function dorpPlaatjeVoorCel(cel){
+  if(!cel) return ASSETS.dorp_grond;
+  if(cel.type === "wachttoren"){
+    return ASSETS[cel.stand==="schutters" ? "dorp_wachttoren_schutters" : cel.stand==="wacht" ? "dorp_wachttoren_wachter" : "dorp_wachttoren"];
+  }
+  if(cel.type === "rondetafel"){
+    return ASSETS[S.dorp.zelfbestuur ? "dorp_rondetafel_oudsten" : "dorp_rondetafel"];
+  }
+  return ASSETS[DORPGEBOUWEN[cel.type].plaatje];
+}
+
+function dorpVolgendeDag(){
+  S.dorp.dag += 1;
+  S.dorp.grid.forEach(cel=>{
+    if(!cel) return;
+    if(cel.type === "graanschuur"){
+      if(cel.onderweg){
+        cel.onderweg.dagenOver -= 1;
+        if(cel.onderweg.dagenOver <= 0){
+          cel.vol = Math.min(100, cel.vol + 10);
+          const m = S.manschappen.find(m=>m.naam === cel.onderweg.naam);
+          if(m) m.opdracht = null;
+          schrijf(`${cel.onderweg.naam} kwam terug met een kar graan voor de Zandboks.`,2);
+          cel.onderweg = null;
+        }
+      } else if(S.dorp.zelfbestuur && cel.vol <= 40){
+        const beschikbaar = S.manschappen.filter(manschapBeschikbaar);
+        if(beschikbaar.length){
+          const m = beschikbaar[Math.floor(Math.random()*beschikbaar.length)];
+          m.opdracht = {type:"graan"};
+          cel.onderweg = {naam:m.naam, dagenOver:3};
+          schrijf(`De dorpsoudsten stuurden zonder te vragen ${m.naam} op pad voor graan.`,2);
+        }
+      }
+      if(S.manschappen.length) cel.vol = Math.max(0, cel.vol - 4);
+    } else if(cel.type === "mijnbouw_put" && cel.grondstof && cel.werkers>0){
+      S.dorp.grondstoffen[cel.grondstof] += Math.max(1, Math.round(3 * cel.werkers/3));
+    } else if(cel.type === "mijnbouw_toren" && cel.grondstof && cel.werkers>0){
+      S.dorp.grondstoffen[cel.grondstof] += Math.max(1, Math.round(12 * cel.werkers/10));
+    }
+  });
+  bewaar(); render();
+}
+
+function dorpGraanStuur(i, naam){
+  const cel = S.dorp.grid[i];
+  const m = S.manschappen.find(m=>m.naam===naam);
+  if(!cel || cel.type!=="graanschuur" || cel.onderweg || !m || m.opdracht) return;
+  m.opdracht = {type:"graan"};
+  cel.onderweg = {naam, dagenOver:3};
+  schrijf(`Stuurde ${naam} op pad om graan te halen voor de Zandboks.`,2);
+  bewaar(); render();
+}
+function dorpMijnbouwKiesGrondstof(i, grondstof){
+  const cel = S.dorp.grid[i];
+  if(!cel || cel.grondstof) return;
+  cel.grondstof = grondstof;
+  bewaar(); render();
+}
+function dorpMijnbouwWerf(i){
+  const cel = S.dorp.grid[i];
+  const max = cel && cel.type === "mijnbouw_toren" ? 10 : 3;
+  const kosten = 6;
+  if(!cel || !cel.grondstof || cel.werkers >= max || S.munten < kosten) return;
+  S.munten -= kosten;
+  cel.werkers += 1;
+  schrijf(`De ertsvoogd wierf een mijnwerker voor de Zandboks, met een zak geld uit de dorpskas.`,2);
+  bewaar(); render();
+}
+function dorpWachtZetten(i, stand){
+  const cel = S.dorp.grid[i];
+  if(!cel || cel.type!=="wachttoren" || cel.stand!=="leeg") return;
+  let kandidaten = S.manschappen.filter(manschapBeschikbaar);
+  if(stand === "schutters"){
+    kandidaten = kandidaten.filter(m=>{ const info = manschapWapenInfo(m.wapen); return info && info.schutter; });
+  }
+  if(kandidaten.length < 3) return;
+  const gekozen = kandidaten.slice(0,3);
+  gekozen.forEach(m=>{ m.opdracht = {type:"wacht"}; });
+  cel.stand = stand;
+  cel.bemanning = gekozen.map(m=>m.naam);
+  schrijf(`Zette ${stand==="schutters"?"drie schutters":"een wacht van drie man"} op de wachttoren van de Zandboks.`,2);
+  bewaar(); render();
+}
+function dorpWachtTerughalen(i){
+  const cel = S.dorp.grid[i];
+  if(!cel || cel.type!=="wachttoren" || cel.stand==="leeg") return;
+  cel.bemanning.forEach(naam=>{
+    const m = S.manschappen.find(m=>m.naam===naam);
+    if(m) m.opdracht = null;
+  });
+  cel.stand = "leeg";
+  cel.bemanning = [];
+  bewaar(); render();
+}
+function dorpRondetafelBijeenroepen(){
+  S.eer += 1;
+  schrijf("Riep de manschappen bijeen aan de ronde tafel in de Zandboks — de stemming is goed.",2);
+  dorpSelectie = null;
+  bewaar(); render();
+}
+function dorpRondetafelOudsten(){
+  S.dorp.zelfbestuur = true;
+  schrijf("Sprak met de dorpsoudsten aan de ronde tafel — voortaan regelt het dorp zelf wanneer de graanschuur wordt bijgevuld.",2);
+  dorpSelectie = null;
+  bewaar(); render();
+}
+function dorpVroegVoeren(){
+  schrijf("Voerde Vroeg bij de voederplaats in de Zandboks.",2);
   dorpSelectie = null;
   bewaar(); render();
 }
@@ -1823,6 +1992,16 @@ function legerBewapen(i, id){
 
 function legerOntsla(i){
   const m = S.manschappen[i];
+  if(m.opdracht && S.dorp){
+    S.dorp.grid.forEach(cel=>{
+      if(!cel) return;
+      if(cel.onderweg && cel.onderweg.naam === m.naam) cel.onderweg = null;
+      if(cel.bemanning){
+        const j = cel.bemanning.indexOf(m.naam);
+        if(j !== -1){ cel.bemanning.splice(j,1); if(!cel.bemanning.length) cel.stand = "leeg"; }
+      }
+    });
+  }
   schrijf(`Liet ${m.naam} gaan uit het leger.`,2);
   S.manschappen.splice(i,1);
   bewaar(); render();
@@ -1848,6 +2027,7 @@ function toonLeger(){
         <div>
           <div class="naam">${m.naam} <span class="cijfers">— ${OPLEIDINGEN[m.opleiding]}</span></div>
           <div class="cijfers">${VOLGKLEDING[m.kleding].naam} · ${manschapWapenInfo(m.wapen).naam}</div>
+          ${m.opdracht ? `<div class="cijfers" style="opacity:.8">Afwezig: ${m.opdracht.type==="graan"?"graan halen in de Zandboks":"wacht bij de wachttoren in de Zandboks"}</div>` : ""}
           <div class="kies" style="margin-top:.35rem">
             ${volgendeKost!==undefined
               ? `<button ${S.munten<volgendeKost?"disabled":""} onclick="legerTrain(${i})">Train — ${volgendeKost}p → ${OPLEIDINGEN[m.opleiding+1]}</button>`
@@ -2325,17 +2505,17 @@ function tussendoorVierEikenHout(){
 }
 
 function toonDorp(){
-  let h = `<article class="blad"><p class="kop">Ten noorden van de Zwarte Ley</p><h1>De Zandboks</h1>
+  const grondstoffen = S.dorp.grondstoffen;
+  let h = `<article class="blad"><p class="kop">Ten noorden van de Zwarte Ley — dag ${S.dorp.dag}</p><h1>De Zandboks</h1>
     <p>Hier begint het kamp dat ooit een dorp moet worden — waar Renzes leger huist, ver van de blikken van Beversluis. Nog is het meeste vlakte.</p>
     <div class="kaart-viewport kaart-viewport--plattegrond" id="zandboksViewport">
       <div class="kaart-zoom" id="zandboksZoom">
         <img class="kaart" src="${ASSETS.zandboks_plattegrond}" alt="De Zandboks, ten noorden van de Zwarte Ley" onerror="this.remove()">
         <div class="dorp-grid" style="left:26.25%;top:18.42%;width:52.48%;height:55.25%;grid-template-columns:repeat(${DORP_KOLOMMEN},1fr);grid-template-rows:repeat(${DORP_RIJEN},1fr)">
           ${S.dorp.grid.map((cel,i)=>{
-            const naam = cel ? DORPGEBOUWEN[cel].naam : "Lege grond";
-            const plaatje = ASSETS[cel ? DORPGEBOUWEN[cel].plaatje : "dorp_grond"];
+            const naam = cel ? DORPGEBOUWEN[cel.type].naam : "Lege grond";
             return `<button class="dorp-vak" type="button" onclick="dorpVakjeKiezen(${i})" title="${naam}">
-              <img src="${plaatje}" alt="${naam}">
+              <img src="${dorpPlaatjeVoorCel(cel)}" alt="${naam}">
             </button>`;
           }).join("")}
         </div>
@@ -2346,8 +2526,11 @@ function toonDorp(){
         <button type="button" onclick="kaartZoomReset('zandboks')" aria-label="Kaart passend maken">⤢</button>
       </div>
     </div>
-    <p class="cijfers" style="margin-top:.6rem">Penningen: ${S.munten} · Manschappen: ${S.manschappen.length}</p>
-    <p style="margin-top:.6rem"><button class="knop knop--stil" onclick="dorpTerug()">Terug over de brug.</button></p>
+    <p class="cijfers" style="margin-top:.6rem">Penningen: ${S.munten} · Manschappen: ${S.manschappen.length}/${dorpCapaciteit()} · Steenkool: ${grondstoffen.steenkool} · IJzer: ${grondstoffen.ijzer} · Goud: ${grondstoffen.goud}</p>
+    <p style="margin-top:.6rem">
+      <button class="knop" onclick="dorpVolgendeDag()">Volgende dag</button>
+      <button class="knop knop--stil" onclick="dorpTerug()">Terug over de brug.</button>
+    </p>
   </article>`;
   if(dorpSelectie !== null) h += tussendoorDorpVak();
   return h;
@@ -2355,26 +2538,86 @@ function toonDorp(){
 
 function tussendoorDorpVak(){
   const i = dorpSelectie;
-  const huidig = S.dorp.grid[i];
-  if(huidig){
-    const info = DORPGEBOUWEN[huidig];
+  const cel = S.dorp.grid[i];
+
+  if(!cel){
     return `<div class="overlay-achtergrond"><div class="overlay-blad">
-      <p class="kop">De Zandboks</p><h1>${info.naam}</h1>
-      <p>${info.noot}</p>
-      <div class="keuzes" style="margin-top:.4rem">
-        <button class="keuze" onclick="dorpSlopen()">Afbreken.<small>Het vakje wordt weer lege grond.</small></button>
-      </div>
-      <p style="margin-top:.8rem"><button class="knop knop--stil" onclick="dorpMenuSluiten()">Sluiten.</button></p>
+      <p class="kop">De Zandboks</p><h1>Wat bouw je hier?</h1>
+      <p class="cijfers">Penningen: ${S.munten}</p>
+      <div class="keuzes" style="margin-top:.4rem">` + Object.entries(DORPGEBOUWEN).map(([id,g])=>{
+        const kan = S.munten >= g.prijs;
+        return `<button class="keuze" ${kan?"":"disabled"} style="${kan?"":"opacity:.5"}" onclick="dorpBouwen('${id}')">${g.naam} — ${g.prijs}p<small>${g.noot}</small></button>`;
+      }).join("") + `</div>
+      <p style="margin-top:.8rem"><button class="knop knop--stil" onclick="dorpMenuSluiten()">Toch niet.</button></p>
     </div></div>`;
   }
+
+  const info = DORPGEBOUWEN[cel.type];
+  let inhoud = `<p>${info.noot}</p>`;
+  let acties = "";
+
+  if(cel.type === "graanschuur"){
+    inhoud += `<p class="cijfers">Voorraad: ${cel.vol}%</p>`;
+    if(cel.onderweg){
+      acties = `<p>${cel.onderweg.naam} is onderweg met een kar — nog ${cel.onderweg.dagenOver} dag${cel.onderweg.dagenOver===1?"":"en"}.</p>`;
+    } else {
+      const beschikbaar = S.manschappen.filter(manschapBeschikbaar);
+      acties = !beschikbaar.length
+        ? `<p class="cijfers">Geen manschap beschikbaar om op pad te sturen.</p>`
+        : `<div class="keuzes" style="margin-top:.4rem">` + beschikbaar.map(m=>
+            `<button class="keuze" onclick="dorpGraanStuur(${i},'${m.naam}')">Stuur ${m.naam} op pad.<small>Terug over 3 dagen met een kar — 10% voorraad.</small></button>`
+          ).join("") + `</div>`;
+    }
+  } else if(cel.type === "mijnbouw_put" || cel.type === "mijnbouw_toren"){
+    const max = cel.type === "mijnbouw_toren" ? 10 : 3;
+    if(!cel.grondstof){
+      acties = `<p>Nog geen aanwijzing welke grondstof hier gewonnen wordt.</p>
+        <div class="keuzes" style="margin-top:.4rem">
+          <button class="keuze" onclick="dorpMijnbouwKiesGrondstof(${i},'steenkool')">Steenkool</button>
+          <button class="keuze" onclick="dorpMijnbouwKiesGrondstof(${i},'ijzer')">IJzer</button>
+          <button class="keuze" onclick="dorpMijnbouwKiesGrondstof(${i},'goud')">Goud</button>
+        </div>`;
+    } else {
+      inhoud += `<p class="cijfers">Wint: ${cel.grondstof} · Mijnwerkers: ${cel.werkers}/${max}</p>`;
+      acties = cel.werkers < max
+        ? `<div class="keuzes" style="margin-top:.4rem">
+            <button class="keuze" ${S.munten<6?"disabled":""} style="${S.munten<6?"opacity:.5":""}" onclick="dorpMijnbouwWerf(${i})">Werf een mijnwerker — 6p<small>De ertsvoogd stuurt iemand het gebied in.</small></button>
+          </div>`
+        : `<p class="cijfers">Volledig bemand.</p>`;
+    }
+  } else if(cel.type === "wachttoren"){
+    const statusTekst = cel.stand === "leeg" ? "onbewaakt" : cel.stand === "wacht" ? "bewaakt" : "bemand met schutters";
+    inhoud += `<p class="cijfers">Status: ${statusTekst}</p>`;
+    if(cel.bemanning.length) inhoud += `<p class="cijfers">${cel.bemanning.join(", ")}</p>`;
+    if(cel.stand === "leeg"){
+      const wachtKandidaten = S.manschappen.filter(manschapBeschikbaar);
+      const schutterKandidaten = wachtKandidaten.filter(m=>{ const inf = manschapWapenInfo(m.wapen); return inf && inf.schutter; });
+      acties = `<div class="keuzes" style="margin-top:.4rem">
+        <button class="keuze" ${wachtKandidaten.length<3?"disabled":""} style="${wachtKandidaten.length<3?"opacity:.5":""}" onclick="dorpWachtZetten(${i},'wacht')">Zet een wacht.<small>3 manschappen, 24 uur in beurten. (${wachtKandidaten.length} beschikbaar)</small></button>
+        <button class="keuze" ${schutterKandidaten.length<3?"disabled":""} style="${schutterKandidaten.length<3?"opacity:.5":""}" onclick="dorpWachtZetten(${i},'schutters')">Zet schutters.<small>3 manschappen met boog of kruisboog. (${schutterKandidaten.length} beschikbaar)</small></button>
+      </div>`;
+    } else {
+      acties = `<div class="keuzes" style="margin-top:.4rem">
+        <button class="keuze" onclick="dorpWachtTerughalen(${i})">Haal ze terug naar de tent.</button>
+      </div>`;
+    }
+  } else if(cel.type === "rondetafel"){
+    acties = `<div class="keuzes" style="margin-top:.4rem">
+      <button class="keuze" onclick="dorpRondetafelBijeenroepen()">Roep de manschappen bijeen.<small>Bespreek bewapening en stemming — +1 eer.</small></button>
+      <button class="keuze" ${S.dorp.zelfbestuur?"disabled":""} style="${S.dorp.zelfbestuur?"opacity:.5":""}" onclick="dorpRondetafelOudsten()">Spreek met de dorpsoudsten.<small>${S.dorp.zelfbestuur ? "Het dorp bestuurt zichzelf al." : "Laat de graanschuur voortaan vanzelf bijvullen."}</small></button>
+    </div>`;
+  } else if(cel.type === "voederplaats"){
+    acties = `<div class="keuzes" style="margin-top:.4rem">
+      <button class="keuze" onclick="dorpVroegVoeren()">Voer Vroeg.<small>Gezond en sterk voor de lange weg.</small></button>
+    </div>`;
+  }
+
   return `<div class="overlay-achtergrond"><div class="overlay-blad">
-    <p class="kop">De Zandboks</p><h1>Wat bouw je hier?</h1>
-    <p class="cijfers">Penningen: ${S.munten}</p>
-    <div class="keuzes" style="margin-top:.4rem">` + Object.entries(DORPGEBOUWEN).map(([id,g])=>{
-      const kan = S.munten >= g.prijs;
-      return `<button class="keuze" ${kan?"":"disabled"} style="${kan?"":"opacity:.5"}" onclick="dorpBouwen('${id}')">${g.naam} — ${g.prijs}p<small>${g.noot}</small></button>`;
-    }).join("") + `</div>
-    <p style="margin-top:.8rem"><button class="knop knop--stil" onclick="dorpMenuSluiten()">Toch niet.</button></p>
+    <p class="kop">De Zandboks</p><h1>${info.naam}</h1>
+    ${inhoud}
+    ${acties}
+    <hr class="regel">
+    <p><button class="knop knop--stil" onclick="dorpSlopen()">Afbreken.</button> <button class="knop knop--stil" onclick="dorpMenuSluiten()">Sluiten.</button></p>
   </div></div>`;
 }
 
