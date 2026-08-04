@@ -317,7 +317,8 @@ const ASSETS = {
   karavaan:    "assets/scene/karavaan.webp",
   steeg:       "assets/scene/steeg.webp",
   kruispunt:   "assets/scene/kruispunt.webp",
-  kerker:      "assets/scene/kerker.webp"
+  kerker:      "assets/scene/kerker.webp",
+  zandboksbrug: "assets/scene/zandboksbrug.webp"
 };
 
 /* Inkt-etsen: de terugval, bewust in stijl en niet als foutmelding */
@@ -1125,7 +1126,7 @@ const ROUTES = {
 };
 
 let reis = null;
-let winkel = null; // null | "smidse" | "karavaan" | "herberg" | "stal" | "viereiken_man" | "viereiken_hout" — losse modale schermen, niet gebonden aan het reizen
+let winkel = null; // null | "smidse" | "karavaan" | "herberg" | "stal" | "viereiken_man" | "viereiken_hout" | "zandboksbrug" — losse modale schermen, niet gebonden aan het reizen
 
 function voorraadOverzicht(){
   const telling = {};
@@ -1632,6 +1633,24 @@ if(S.dorp.dievenzoekers === undefined) S.dorp.dievenzoekers = null;
 let dorpSelectie = null;
 let dorpSubscherm = null;
 
+function zandboksbrugOpenen(){ winkel = "zandboksbrug"; render(); }
+function zandboksbrugOversteken(){
+  winkel = null;
+  S.weergave = "dorp";
+  bewaar(); render(); window.scrollTo({top:0});
+}
+function tussendoorZandboksbrug(){
+  return `<div class="overlay-achtergrond"><div class="overlay-blad">
+    <p class="kop">Voorbij de Zwarte Ley</p><h1>De Zandboksbrug</h1>
+    ${plaat("zandboksbrug")}
+    <p>Een wachtpost van ruwe planken, twee man op de uitkijk, en daarachter een brug die meer klinkt dan staat wanneer het water eronder trekt. Voorbij de brug is niemandsland — geen weg getekend, geen naam op geen enkele kaart.</p>
+    <p>Weet je zeker dat je oversteekt?</p>
+    <div class="keuzes" style="margin-top:.6rem">
+      <button class="keuze" onclick="zandboksbrugOversteken()">Ja. Ik steek over.<small>Voorbij de brug ligt de Zandboks.</small></button>
+    </div>
+    <p style="margin-top:.8rem"><button class="knop knop--stil" onclick="winkelSluiten()">Nog niet.</button></p>
+  </div></div>`;
+}
 function dorpOpenen(){
   S.weergave = "dorp";
   bewaar(); render(); window.scrollTo({top:0});
@@ -2405,6 +2424,10 @@ function kaartHotspots(){
       </button>`;
     }
   }
+  h += `<button class="hotspot" type="button" onclick="zandboksbrugOpenen()"
+    data-fx="0.795" data-fy="0.10" title="De Zandboksbrug">
+    <span class="merk">${KRUISJE_SVG}</span><span class="label">Zandboksbrug</span>
+  </button>`;
   return h;
 }
 
@@ -2497,6 +2520,7 @@ function toonKaartReizen(){
   if(winkel === "stal") h += tussendoorStal();
   if(winkel === "viereiken_man") h += tussendoorVierEikenMan();
   if(winkel === "viereiken_hout") h += tussendoorVierEikenHout();
+  if(winkel === "zandboksbrug") h += tussendoorZandboksbrug();
   return h;
 }
 
