@@ -762,6 +762,8 @@ const SCENES = {
       "Er is niets dat je hier moet doen. Er is alleen iets dat je kúnt doen."
     ],
     keuzes:[
+      {tekst:"Blijf tussen de struiken liggen en kijk toe.", onder:"Niets nemen. Alleen kijken.",
+       naar:"beroven_afloop", doe(){ return berovenKijken(); }},
       {tekst:"Wacht op een eenzame reiziger.", onder:"Weinig buit, weinig risico.",
        naar:"beroven_afloop", doe(){ return berovenPoging("klein"); }},
       {tekst:"Wacht op de graankar van de tollenaar.", onder:"Veel buit, veel risico.",
@@ -816,6 +818,22 @@ function spionageAfloop(methode){
   };
 }
 
+function berovenKijken(){
+  const teksten = [
+    "Een eenzame reiziger passeert, mompelend tegen zichzelf, en verdwijnt weer in het donker. Niets gebeurt. Dat is ook een soort antwoord.",
+    "Een kar met graan hobbelt voorbij, de voerman half in slaap op de bok. Je laat hem gaan en voelt iets dat op opluchting lijkt.",
+    "Verderop schrikt een uil op uit de struiken. Verder blijft de weg leeg, tot de hemel grijzer wordt dan zwart."
+  ];
+  const tekst = teksten[Math.floor(Math.random()*teksten.length)];
+  schrijf("Bleef tussen de struiken bij het kruispunt liggen en liet de nacht voorbijgaan.",1);
+  SCENES.beroven_afloop = {
+    plaat:"kruispunt", kop:"Het kruispunt", titel:"Niets genomen",
+    tekst:[tekst, "Geen buit, geen risico. Morgen sta je hier weer, als je wilt."],
+    keuzes:[{tekst:"Terug naar Beversluis.", naar:"hoofdstuk1"}]
+  };
+  return "beroven_afloop";
+}
+
 function berovenPoging(soort){
   if(S.gezocht >= 3){ return gevangenNemen(soort); }
   const buit = soort === "klein" ? 5 + Math.floor(Math.random()*6) : 15 + Math.floor(Math.random()*16);
@@ -848,14 +866,30 @@ function gevangenNemen(soort){
   S.eer = Math.max(0, S.eer-5);
   const verloren = Math.min(S.munten, 10 + Math.floor(Math.random()*20));
   S.munten -= verloren;
+  S.vlaggen.kerkerKeer = (S.vlaggen.kerkerKeer||0) + 1;
+  const eerderGevangen = S.vlaggen.kerkerKeer >= 2;
   schrijf("Gevangen genomen bij het kruispunt en naar de kerker van Beversluis gebracht.",3,"vrijheid");
 
-  SCENES.kerker = {
+  const basisTekst = [
+    "De cel is te laag om in te staan en te nat om in te liggen. De andere gevangenen zijn dun geworden op een manier die niets met vasten te maken heeft; hun ribben tellen mee als kalenderdagen.",
+    harnasKwijt ? "Het harnas van Weel hangt nu ergens in het wapenhuis van de schout, op naam van een ander." : "Wat je bezat is geteld, gewogen en ingenomen.",
+    `Je verliest ${verloren} penningen aan boetes die niemand je toont op papier. De schout komt zelf kijken, niet om te straffen, maar om te onthouden welk gezicht bij welke naam hoort.`
+  ];
+
+  SCENES.kerker = eerderGevangen ? {
+    plaat:"kerker", kop:"De kerker onder Beversluis, dagen zonder licht", titel:"Geen vrij man meer",
+    tekst:[...basisTekst,
+      "Deze keer volgt geen stille vrijlating. De schout leest het vonnis zelf voor: geen strop, geen tweede kerker, maar verbanning — over de brug, voorbij de Zwarte Ley, waar niemand nog voor je hoeft te betalen wat je steelt."
+    ],
+    keuzes:[{tekst:"Over de brug, naar de Zandboks.", naar:"dorp",
+      doe(){
+        S.vlaggen.verbannen = true;
+        S.gezocht = 0;
+        schrijf("Verbannen over de brug naar de Zandboks — de schout wil zijn gezicht niet meer zien in Beversluis.",4,"vrijheid");
+      }}]
+  } : {
     plaat:"kerker", kop:"De kerker onder Beversluis, dagen zonder licht", titel:"Tussen zeer magere mannen",
-    tekst:[
-      "De cel is te laag om in te staan en te nat om in te liggen. De andere gevangenen zijn dun geworden op een manier die niets met vasten te maken heeft; hun ribben tellen mee als kalenderdagen.",
-      harnasKwijt ? "Het harnas van Weel hangt nu ergens in het wapenhuis van de schout, op naam van een ander." : "Wat je bezat is geteld, gewogen en ingenomen.",
-      `Je verliest ${verloren} penningen aan boetes die niemand je toont op papier. De schout komt zelf kijken, niet om te straffen, maar om te onthouden welk gezicht bij welke naam hoort.`,
+    tekst:[...basisTekst,
       "Na verloop van tijd word je vrijgelaten. Niemand zegt waarom. Misschien is een cel meer waard met een levende gevangene die weer iets kan verdienen dat de schout kan afnemen."
     ],
     keuzes:[{tekst:"De poort uit, het daglicht in.", naar:"hoofdstuk1",
@@ -1470,6 +1504,94 @@ function karavaanTerug(){
   bewaar(); render(); window.scrollTo({top:0,behavior:"instant"});
 }
 
+/* Herhaalbare kanselier- en schoutopdrachten, aangeboden op de plattegrond
+   van Beversluis — los van de eenmalige hoofdstuk-1-scenes. Elke opdracht
+   kent twee bezoeken: een keer voor de opdracht, een keer voor de betaling. */
+function kanselierOpenen(){ winkel = "kanselier"; render(); }
+function kanselierMethode(methode){
+  let succes = false, tekst = "";
+  if(methode === "omkopen"){
+    if(S.munten >= 15){
+      S.munten -= 15;
+      succes = true;
+      tekst = "Vijftien penningen wisselen van hand in een hoek van de herberg, en een naam komt terug: iemand die al een tijd te weinig zakken telt.";
+    } else {
+      tekst = "Je hebt het zilver niet dat dit werk vraagt. Je gaat met lege handen terug.";
+    }
+  } else if(methode === "dreigen"){
+    succes = (ontzag() + Math.random()*5) >= 6;
+    tekst = succes
+      ? "Eén knecht houdt het twee vragen vol. Bij de derde komt er een naam."
+      : "Ze houden hun mond stijver dan verwacht. Wel weet nu een deel van de stad dat er rondgevraagd wordt.";
+  } else if(methode === "sluipen"){
+    succes = (onopvallend() + Math.random()*6) >= 9;
+    tekst = succes
+      ? "Je vindt vóór het licht wordt een lijst met namen die niet de koning dienen."
+      : "Een hond slaat aan voordat je bij de balk bent. Je bent weg voor er een gezicht bij je naam komt.";
+  }
+  if(!succes) S.eer = Math.max(0, S.eer-1);
+  S.vlaggen.kanselier_resultaat = succes ? "succes" : "falen";
+  S.vlaggen.kanselier_tekst = tekst;
+  bewaar(); render();
+}
+function kanselierBetalingOphalen(){
+  if(S.vlaggen.kanselier_resultaat === "succes"){
+    S.munten += 25; S.eer += 2;
+    schrijf("Ontmaskerde in het geheim iemand voor de kanselier van Beversluis.",2);
+  }
+  S.vlaggen.kanselier_resultaat = null;
+  S.vlaggen.kanselier_tekst = null;
+  winkel = null;
+  bewaar(); render();
+}
+
+function schoutOpenen(){ winkel = "schout"; render(); }
+const SCHOUT_DUEL_CTX = {
+  plaatId:"steeg",
+  kop:"Een steeg achter de graanmarkt", titel:"Een dief tussen de kramen",
+  vijandLabel:"De dief", vijandInfo:"vlug, geen harnas",
+  raadFluisteraar:"Je eigen adem, want niemand anders is dichtbij",
+  gewonnenTekst:[
+    "Hij rent zich vast in een blinde muur en jij bent sneller op adem dan hij.",
+    "Je bindt zijn handen. Voor het zilver moet je terug naar de schout."
+  ],
+  verlorenTekst:[
+    "Hij duikt onder je arm door en is over het dak voordat je overeind staat.",
+    "Met lege handen blijft er weinig te melden bij de schout."
+  ],
+  afGewonnen(){
+    S.vlaggen.schout_resultaat = "gewonnen";
+    schrijf("Ving een dief in de stegen achter de graanmarkt, in opdracht van de schout.",2);
+    schoutTerug();
+  },
+  afVerloren(){
+    S.eer = Math.max(0,S.eer-1);
+    S.vlaggen.schout_resultaat = "verloren";
+    schrijf("Liet een dief ontsnappen in de stegen achter de graanmarkt.",2);
+    schoutTerug();
+  }
+};
+function schoutVraagOpdracht(){
+  winkel = null;
+  S.scene = "duel"; S.weergave = "verhaal";
+  duelStart(SCHOUT_DUEL_CTX);
+  bewaar(); render(); window.scrollTo({top:0,behavior:"instant"});
+}
+function schoutTerug(){
+  S.scene = "hoofdstuk1";
+  S.weergave = "kaart";
+  bewaar(); render(); window.scrollTo({top:0,behavior:"instant"});
+}
+function schoutBetalingOphalen(){
+  if(S.vlaggen.schout_resultaat === "gewonnen"){
+    S.munten += 12; S.eer += 1;
+    schrijf("Ontving betaling van de schout voor een gevangen dief.",1);
+  }
+  S.vlaggen.schout_resultaat = null;
+  winkel = null;
+  bewaar(); render();
+}
+
 /* ---------------------------------------------------------------------
    5e. DE ZANDBOKS — sandbox-dorp ten noorden van de Zwarte Ley (proef).
    Losse wereld, bereikt via de ontwikkelknop; zelfde S (geld, manschappen,
@@ -1516,6 +1638,42 @@ function dorpTerug(){
   S.weergave = "kaart";
   dorpSelectie = null;
   bewaar(); render(); window.scrollTo({top:0});
+}
+const GESCHENK_PRIJS = 60, GESCHENKEN_NODIG = 3;
+function verbanningOpenen(){ winkel = "verbanning"; render(); }
+function verbanningGeschenkSturen(){
+  if(S.munten < GESCHENK_PRIJS || S.vlaggen.gratie) return;
+  S.munten -= GESCHENK_PRIJS;
+  S.vlaggen.geschenken = (S.vlaggen.geschenken||0) + 1;
+  if(S.vlaggen.geschenken >= GESCHENKEN_NODIG){
+    S.vlaggen.gratie = true;
+    schrijf("Zoveel geschenken naar de kanselier gestuurd dat Renze weer over de brug mag — de verbanning is opgeheven.",3,"vrijheid");
+  } else {
+    schrijf(`Stuurde een geschenk naar de kanselier vanuit de Zandboks (${S.vlaggen.geschenken}/${GESCHENKEN_NODIG}).`,1);
+  }
+  bewaar(); render();
+}
+function tussendoorVerbanning(){
+  const geschenken = S.vlaggen.geschenken||0;
+  if(S.vlaggen.gratie){
+    return `<div class="overlay-achtergrond"><div class="overlay-blad">
+      <p class="kop">De Zandboks</p><h1>Gratie</h1>
+      ${plaat("kanselier")}
+      <p>De kanselier heeft genoeg geschenken ontvangen. Renze mag weer over de brug — als hij dat wil.</p>
+      <p style="margin-top:.8rem"><button class="knop" onclick="dorpTerug()">Over de brug, naar Beversluis.</button> <button class="knop knop--stil" onclick="winkelSluiten()">Nog niet.</button></p>
+    </div></div>`;
+  }
+  return `<div class="overlay-achtergrond"><div class="overlay-blad">
+    <p class="kop">De Zandboks</p><h1>Verbannen</h1>
+    ${plaat("kanselier")}
+    <p>De schout wil je gezicht niet meer zien in Beversluis. Terug over de brug kan pas als de kanselier genoeg geschenken heeft ontvangen om het vonnis te vergeten.</p>
+    <p>Gezanten mogen wel komen en gaan — er wordt hier gehandeld, alleen niet door jou, niet in de stad zelf.</p>
+    <p class="cijfers">Geschenken gestuurd: ${geschenken}/${GESCHENKEN_NODIG} · Penningen: ${S.munten}</p>
+    <div class="keuzes" style="margin-top:.4rem">
+      <button class="keuze" ${S.munten<GESCHENK_PRIJS?"disabled":""} style="${S.munten<GESCHENK_PRIJS?"opacity:.5":""}" onclick="verbanningGeschenkSturen()">Stuur een geschenk naar de kanselier — ${GESCHENK_PRIJS}p<small>Een gezant brengt het, stil en zonder naam.</small></button>
+    </div>
+    <p style="margin-top:.8rem"><button class="knop knop--stil" onclick="winkelSluiten()">Nog niet terug.</button></p>
+  </div></div>`;
 }
 function dorpVakjeKiezen(i){
   dorpSelectie = i;
@@ -1684,6 +1842,13 @@ const HERBERG_GERUCHTEN = [
   "Bij de noordpoort is een wachter ontslagen. Niemand zegt waarom, en iedereen heeft er een reden voor bedacht.",
   "Een marskramer vertelt over een wegkapel met een Mariabeeld dat te mooi is voor zo'n klein kapelletje. Niemand gelooft het tot ze het zelf zien."
 ];
+const HERBERG_SOLDATEN_GERUCHTEN = [
+  "Een korporaal klaagt zacht dat de wachttorens langs de Zwarte Ley al maanden onderbemand zijn.",
+  "Een soldaat vertelt, met zijn stem laag, dat de schout een lijst bijhoudt van gezichten die 's nachts bij het kruispunt zijn gezien.",
+  "Ze wedden onderling wie het eerst een naam weet te plakken op de verdwenen graankar van de tollenaar.",
+  "Een jonge wachter fluistert dat de kanselier een gezant naar het noorden heeft gestuurd, maar niemand aan deze tafel weet waarom.",
+  "«Wij krijgen betaald om te wachten,» zegt een van hen. «De rest van de stad wacht mee, gratis.»"
+];
 
 function herbergOpenen(){ winkel = "herberg"; render(); }
 function herbergMaaltijd(){
@@ -1694,6 +1859,12 @@ function herbergMaaltijd(){
 }
 function herbergLuisteren(){
   const tekst = HERBERG_GERUCHTEN[Math.floor(Math.random()*HERBERG_GERUCHTEN.length)];
+  fluister(tekst, 1);
+  bewaar(); render();
+}
+function herbergSoldatenSpreken(){
+  if(onopvallend() < 7) return;
+  const tekst = HERBERG_SOLDATEN_GERUCHTEN[Math.floor(Math.random()*HERBERG_SOLDATEN_GERUCHTEN.length)];
   fluister(tekst, 1);
   bewaar(); render();
 }
@@ -1817,6 +1988,8 @@ function ga(id, duelCtx){
     S.weergave = "uitrusting";
   } else if(id === "duel"){
     S.scene = "duel"; S.weergave = "verhaal"; duelStart(duelCtx);
+  } else if(id === "dorp"){
+    S.weergave = "dorp";
   } else {
     S.scene = id; S.weergave = "verhaal";
   }
@@ -2160,6 +2333,12 @@ function toonKaartReizen(){
           <button class="hotspot" type="button" onclick="stalOpenen()" data-fx="0.428" data-fy="0.695" title="De Stal">
             <span class="merk">${KRUISJE_SVG}</span><span class="label">Stal</span>
           </button>
+          <button class="hotspot" type="button" onclick="kanselierOpenen()" data-fx="0.71" data-fy="0.16" title="De Kanselierskamer">
+            <span class="merk">${KRUISJE_SVG}</span><span class="label">Kanselier</span>
+          </button>
+          <button class="hotspot" type="button" onclick="schoutOpenen()" data-fx="0.585" data-fy="0.39" title="Het Waaggebouw">
+            <span class="merk">${KRUISJE_SVG}</span><span class="label">Schout</span>
+          </button>
         </div>
         <div class="kaart-knoppen">
           <button type="button" onclick="kaartZoomStap('plattegrond',1)" aria-label="Inzoomen">+</button>
@@ -2198,6 +2377,8 @@ function toonKaartReizen(){
   else if(reis && reis.fase === "onderweg" && reis.gebeurtenis) h += tussendoorGebeurtenis();
   if(winkel === "smidse") h += tussendoorSmidse();
   if(winkel === "karavaan") h += tussendoorKaravaan();
+  if(winkel === "kanselier") h += tussendoorKanselier();
+  if(winkel === "schout") h += tussendoorSchout();
   if(winkel === "herberg") h += tussendoorHerberg();
   if(winkel === "stal") h += tussendoorStal();
   if(winkel === "viereiken_man") h += tussendoorVierEikenMan();
@@ -2459,15 +2640,65 @@ function tussendoorKaravaan(){
   </div></div>`;
 }
 
+function tussendoorKanselier(){
+  const resultaat = S.vlaggen.kanselier_resultaat;
+  if(!resultaat){
+    return `<div class="overlay-achtergrond"><div class="overlay-blad">
+      <p class="kop">De kanselierskamer, Beversluis</p><h1>De kanselier</h1>
+      ${plaat("kanselier")}
+      <p>De kanselier zoekt oren die niemand verdenkt. «Er is altijd wel iemand die zilver telt dat niet van hem is,» zegt hij.</p>
+      <div class="keuzes" style="margin-top:.4rem">
+        <button class="keuze" onclick="kanselierMethode('dreigen')">Dreig tot iemand praat.<small>Snel. Ook snel bekend bij de verkeerde mensen.</small></button>
+        <button class="keuze" ${S.munten<15?"disabled":""} style="${S.munten<15?"opacity:.5":""}" onclick="kanselierMethode('omkopen')">Koop een naam met eigen zilver — 15p<small>Ongeacht wat het oplevert.</small></button>
+        <button class="keuze" onclick="kanselierMethode('sluipen')">Sluip 's nachts naar binnen.<small>Stil, als je stil kúnt zijn.</small></button>
+      </div>
+      <p style="margin-top:.8rem"><button class="knop knop--stil" onclick="winkelSluiten()">Nog niet.</button></p>
+    </div></div>`;
+  }
+  return `<div class="overlay-achtergrond"><div class="overlay-blad">
+    <p class="kop">De kanselierskamer, Beversluis</p><h1>${resultaat==="succes" ? "Een naam, geen gerucht" : "Niets om te melden"}</h1>
+    ${plaat("kanselier")}
+    <p>${S.vlaggen.kanselier_tekst}</p>
+    <div class="keuzes" style="margin-top:.4rem">
+      <button class="keuze" onclick="kanselierBetalingOphalen()">${resultaat==="succes" ? "Ontvang betaling — 25p" : "Ga weg zonder betaling"}</button>
+    </div>
+  </div></div>`;
+}
+
+function tussendoorSchout(){
+  const resultaat = S.vlaggen.schout_resultaat;
+  if(!resultaat){
+    return `<div class="overlay-achtergrond"><div class="overlay-blad">
+      <p class="kop">Het waaggebouw, Beversluis</p><h1>De schout</h1>
+      ${plaat("steeg")}
+      <p>De schout heeft een lijst en een klerk en geen geduld. «Er is een dief gezien bij de graanmarkt,» zegt hij. «Breng hem hier. Ik betaal per stuk, niet per verhaal.»</p>
+      <div class="keuzes" style="margin-top:.4rem">
+        <button class="keuze" onclick="schoutVraagOpdracht()">Zoek hem tussen de kramen.<small>Vlug, en zonder harnas.</small></button>
+      </div>
+      <p style="margin-top:.8rem"><button class="knop knop--stil" onclick="winkelSluiten()">Nog niet.</button></p>
+    </div></div>`;
+  }
+  return `<div class="overlay-achtergrond"><div class="overlay-blad">
+    <p class="kop">Het waaggebouw, Beversluis</p><h1>${resultaat==="gewonnen" ? "De dief is gevangen" : "Met lege handen"}</h1>
+    ${plaat("steeg")}
+    <p>${resultaat==="gewonnen" ? "De schout weegt het zilver af zonder je aan te kijken." : "De schout haalt zijn schouders op. «Volgende week weer een dief,» zegt hij. «Er zijn er genoeg.»"}</p>
+    <div class="keuzes" style="margin-top:.4rem">
+      <button class="keuze" onclick="schoutBetalingOphalen()">${resultaat==="gewonnen" ? "Ontvang betaling — 12p" : "Ga weg"}</button>
+    </div>
+  </div></div>`;
+}
+
 function tussendoorHerberg(){
+  const onopvallendGenoeg = onopvallend() >= 7;
   return `<div class="overlay-achtergrond"><div class="overlay-blad">
     <p class="kop">De Herberg, Beversluis</p><h1>Warmte en het laatste nieuws</h1>
     ${plaat("herberg")}
     <p>Het is er warm van het vuur en van de mensen, en niemand kijkt lang naar wie er binnenkomt. Een tafel, een kroes, en het nieuws van de week — dat is hier alles te koop.</p>
     <p class="cijfers">Penningen: ${S.munten}</p>
     <div class="keuzes" style="margin-top:.4rem">
+      <button class="keuze" onclick="herbergLuisteren()">Spreek met de barvrouw.<small>Kost niets. Levert misschien iets op.</small></button>
+      <button class="keuze" ${onopvallendGenoeg?"":"disabled"} style="${onopvallendGenoeg?"":"opacity:.5"}" onclick="herbergSoldatenSpreken()">Spreek met de soldaten.<small>${onopvallendGenoeg ? "In deze kleding valt niemand op — je kunt vragen stellen." : "Te opvallend gekleed. In onopvallende kleding durven ze meer te zeggen."}</small></button>
       <button class="keuze" ${S.munten<3?"disabled":""} style="${S.munten<3?"opacity:.5":""}" onclick="herbergMaaltijd()">Een maaltijd en een kroes — 3 penningen<small>Warm eten, en een half uur waarin niemand iets van je wil.</small></button>
-      <button class="keuze" onclick="herbergLuisteren()">Luister naar het nieuws.<small>Kost niets. Levert misschien iets op.</small></button>
       ${S.vlaggen.heeft_proviand
         ? `<button class="keuze" disabled style="opacity:.5;border-left-color:var(--perkament-schaduw)">Brood en drank om mee te nemen.<small>Je draagt al proviand.</small></button>`
         : `<button class="keuze" ${S.munten<5?"disabled":""} style="${S.munten<5?"opacity:.5":""}" onclick="herbergProviand()">Brood en drank om mee te nemen — 5 penningen<small>Voor iemand onderweg die geen penningen wil, of niet vertrouwt.</small></button>`
@@ -2565,10 +2796,13 @@ function toonDorp(){
     <p class="cijfers" style="margin-top:.6rem">Penningen: ${S.munten} · Manschappen: ${S.manschappen.length}/${dorpCapaciteit()} · Steenkool: ${grondstoffen.steenkool} · IJzer: ${grondstoffen.ijzer} · Goud: ${grondstoffen.goud}</p>
     <p style="margin-top:.6rem">
       <button class="knop" onclick="dorpVolgendeDag()">Volgende dag</button>
-      <button class="knop knop--stil" onclick="dorpTerug()">Terug over de brug.</button>
+      ${S.vlaggen.verbannen && !S.vlaggen.gratie
+        ? `<button class="knop knop--stil" onclick="verbanningOpenen()">Terug over de brug.</button>`
+        : `<button class="knop knop--stil" onclick="dorpTerug()">Terug over de brug.</button>`}
     </p>
   </article>`;
   if(dorpSelectie !== null) h += tussendoorDorpVak();
+  if(winkel === "verbanning") h += tussendoorVerbanning();
   return h;
 }
 
