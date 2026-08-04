@@ -1636,6 +1636,11 @@ if(!S.dorp.grondstoffen) S.dorp.grondstoffen = {steenkool:0, ijzer:0, goud:0};
 if(typeof S.dorp.dag !== "number") S.dorp.dag = 0;
 if(typeof S.dorp.zelfbestuur !== "boolean") S.dorp.zelfbestuur = false;
 if(S.dorp.dievenzoekers === undefined) S.dorp.dievenzoekers = null;
+S.dorp.grid.forEach(cel=>{
+  if(cel && cel.type === "graanschuur" && !Array.isArray(cel.onderweg)){
+    cel.onderweg = cel.onderweg ? [cel.onderweg] : [];
+  }
+});
 
 let dorpSelectie = null;
 let dorpSubscherm = null;
@@ -1726,7 +1731,7 @@ function dorpBouwen(id){
   if(!gebouw || S.munten < gebouw.prijs || S.dorp.grid[dorpSelectie]) return;
   S.munten -= gebouw.prijs;
   const cel = {type:id};
-  if(id === "graanschuur"){ cel.vol = 0; cel.onderweg = null; }
+  if(id === "graanschuur"){ cel.vol = 0; cel.onderweg = []; }
   if(id === "mijnbouw_put" || id === "mijnbouw_toren"){ cel.grondstof = null; cel.werkers = 0; }
   if(id === "wachttoren"){ cel.stand = "leeg"; cel.bemanning = []; }
   S.dorp.grid[dorpSelectie] = cel;
@@ -1739,7 +1744,7 @@ function dorpSlopen(){
   const cel = S.dorp.grid[dorpSelectie];
   if(cel){
     const namen = [];
-    if(cel.onderweg) namen.push(cel.onderweg.naam);
+    if(cel.onderweg) namen.push(...cel.onderweg.map(o=>o.naam));
     if(cel.bemanning) namen.push(...cel.bemanning);
     namen.forEach(naam=>{
       const m = S.manschappen.find(m=>m.naam===naam);
@@ -1776,21 +1781,20 @@ function dorpVolgendeDag(){
   S.dorp.grid.forEach(cel=>{
     if(!cel) return;
     if(cel.type === "graanschuur"){
-      if(cel.onderweg){
-        cel.onderweg.dagenOver -= 1;
-        if(cel.onderweg.dagenOver <= 0){
-          cel.vol = Math.min(100, cel.vol + 10);
-          const m = S.manschappen.find(m=>m.naam === cel.onderweg.naam);
-          if(m) m.opdracht = null;
-          schrijf(`${cel.onderweg.naam} kwam terug met een kar graan voor de Zandboks.`,2);
-          cel.onderweg = null;
-        }
-      } else if(S.dorp.zelfbestuur && cel.vol <= 40){
+      cel.onderweg.forEach(o=>{ o.dagenOver -= 1; });
+      cel.onderweg.filter(o=>o.dagenOver <= 0).forEach(o=>{
+        cel.vol = Math.min(100, cel.vol + 10);
+        const m = S.manschappen.find(m=>m.naam === o.naam);
+        if(m) m.opdracht = null;
+        schrijf(`${o.naam} kwam terug met een kar graan voor de Zandboks.`,2);
+      });
+      cel.onderweg = cel.onderweg.filter(o=>o.dagenOver > 0);
+      if(S.dorp.zelfbestuur && cel.vol <= 40){
         const beschikbaar = S.manschappen.filter(manschapBeschikbaar);
         if(beschikbaar.length){
           const m = beschikbaar[Math.floor(Math.random()*beschikbaar.length)];
           m.opdracht = {type:"graan"};
-          cel.onderweg = {naam:m.naam, dagenOver:3};
+          cel.onderweg.push({naam:m.naam, dagenOver:3});
           schrijf(`De dorpsoudsten stuurden zonder te vragen ${m.naam} op pad voor graan.`,2);
         }
       }
@@ -1843,9 +1847,9 @@ function dorpVolgendeDag(){
 function dorpGraanStuur(i, naam){
   const cel = S.dorp.grid[i];
   const m = S.manschappen.find(m=>m.naam===naam);
-  if(!cel || cel.type!=="graanschuur" || cel.onderweg || !m || m.opdracht) return;
+  if(!cel || cel.type!=="graanschuur" || !m || m.opdracht) return;
   m.opdracht = {type:"graan"};
-  cel.onderweg = {naam, dagenOver:3};
+  cel.onderweg.push({naam, dagenOver:3});
   schrijf(`Stuurde ${naam} op pad om graan te halen voor de Zandboks.`,2);
   bewaar(); render();
 }
@@ -1899,6 +1903,18 @@ function dorpRondetafelBijeenroepen(){
 function dorpRondetafelOudsten(){
   S.dorp.zelfbestuur = true;
   schrijf("Sprak met de dorpsoudsten aan de ronde tafel — voortaan regelt het dorp zelf wanneer de graanschuur wordt bijgevuld.",2);
+  bewaar(); render();
+}
+const GRAAN_DOELEN = [20, 50, 70, 100];
+const GRAAN_PRIJS_PER_PROCENT = 2;
+function dorpOudstenVoorraadOpPeilBrengen(doel){
+  const cel = S.dorp.grid.find(c=>c && c.type==="graanschuur");
+  if(!cel || cel.vol >= doel) return;
+  const kosten = (doel - cel.vol) * GRAAN_PRIJS_PER_PROCENT;
+  if(S.munten < kosten) return;
+  S.munten -= kosten;
+  schrijf(`De dorpsraad kocht voorraad in tot ${doel}% vulling van de graanschuur, voor ${kosten} penningen.`,2);
+  cel.vol = doel;
   bewaar(); render();
 }
 function dorpOudstenVoorraadVragen(){
@@ -2303,7 +2319,7 @@ function legerOntsla(i){
   if(m.opdracht && S.dorp){
     S.dorp.grid.forEach(cel=>{
       if(!cel) return;
-      if(cel.onderweg && cel.onderweg.naam === m.naam) cel.onderweg = null;
+      if(cel.onderweg) cel.onderweg = cel.onderweg.filter(o=>o.naam !== m.naam);
       if(cel.bemanning){
         const j = cel.bemanning.indexOf(m.naam);
         if(j !== -1){ cel.bemanning.splice(j,1); if(!cel.bemanning.length) cel.stand = "leeg"; }
@@ -2978,16 +2994,15 @@ function tussendoorDorpVak(){
 
   if(cel.type === "graanschuur"){
     inhoud += `<p class="cijfers">Voorraad: ${cel.vol}%</p>`;
-    if(cel.onderweg){
-      acties = `<p>${cel.onderweg.naam} is onderweg met een kar — nog ${cel.onderweg.dagenOver} dag${cel.onderweg.dagenOver===1?"":"en"}.</p>`;
-    } else {
-      const beschikbaar = S.manschappen.filter(manschapBeschikbaar);
-      acties = !beschikbaar.length
-        ? `<p class="cijfers">Geen manschap beschikbaar om op pad te sturen.</p>`
-        : `<div class="keuzes" style="margin-top:.4rem">` + beschikbaar.map(m=>
-            `<button class="keuze" onclick="dorpGraanStuur(${i},'${m.naam}')">Stuur ${m.naam} op pad.<small>Terug over 3 dagen met een kar — 10% voorraad.</small></button>`
-          ).join("") + `</div>`;
+    if(cel.onderweg.length){
+      inhoud += `<p>` + cel.onderweg.map(o=>`${o.naam} is onderweg met een kar — nog ${o.dagenOver} dag${o.dagenOver===1?"":"en"}.`).join("<br>") + `</p>`;
     }
+    const beschikbaar = S.manschappen.filter(manschapBeschikbaar);
+    acties = !beschikbaar.length
+      ? (cel.onderweg.length ? "" : `<p class="cijfers">Geen manschap beschikbaar om op pad te sturen.</p>`)
+      : `<div class="keuzes" style="margin-top:.4rem">` + beschikbaar.map(m=>
+          `<button class="keuze" onclick="dorpGraanStuur(${i},'${m.naam}')">Stuur ${m.naam} op pad.<small>Terug over 3 dagen met een kar — 10% voorraad.</small></button>`
+        ).join("") + `</div>`;
   } else if(cel.type === "mijnbouw_put" || cel.type === "mijnbouw_toren"){
     const max = cel.type === "mijnbouw_toren" ? 10 : 3;
     if(!cel.grondstof){
@@ -3069,10 +3084,15 @@ function tussendoorDorpVak(){
       acties += `<button class="keuze" ${graanschuurCel?"":"disabled"} style="${graanschuurCel?"":"opacity:.5"}" onclick="dorpOudstenVoorraadVragen()">Vraag hoe het met de voorraden staat.<small>${graanschuurCel ? "De graanschuur, in cijfers." : "Er is nog geen graanschuur."}</small></button>`;
       acties += `<button class="keuze" onclick="dorpOudstenGezantVragen()">Vraag de gezant naar nieuws uit Weelland.<small>Kost niets. Levert misschien iets op.</small></button>`;
 
-      if(graanschuurCel && !graanschuurCel.onderweg){
+      if(graanschuurCel){
         acties += beschikbaar.map(m=>
           `<button class="keuze" onclick="dorpGraanStuur(${graanschuurIdx},'${m.naam}')">Stuur ${m.naam} om de voorraden bij te vullen.<small>Terug over 3 dagen — 10% voorraad.</small></button>`
         ).join("");
+        acties += GRAAN_DOELEN.map(doel=>{
+          const kosten = Math.max(0, doel - graanschuurCel.vol) * GRAAN_PRIJS_PER_PROCENT;
+          const kan = graanschuurCel.vol < doel && S.munten >= kosten;
+          return `<button class="keuze" ${kan?"":"disabled"} style="${kan?"":"opacity:.5"}" onclick="dorpOudstenVoorraadOpPeilBrengen(${doel})">Opdracht: voorraad naar ${doel}% — ${kosten}p<small>${graanschuurCel.vol >= doel ? "Al bereikt." : "Ingekocht, niet gehaald."}</small></button>`;
+        }).join("");
       }
 
       ["steenkool","ijzer","goud"].forEach(g=>{
