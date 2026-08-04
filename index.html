@@ -279,6 +279,7 @@ const ASSETS = {
   dorp_waterput: "assets/dorp/waterput.webp",
   dorp_plaggenhutboerderij: "assets/dorp/plaggenhutboerderij.webp",
   dorp_paardenfokkerij: "assets/dorp/paardenfokkerij.webp",
+  dorp_houtzagerij: "assets/dorp/houtzagerij.webp",
   dorp_groepstent: "assets/dorp/groepstent.webp",
   dorp_rondetafel: "assets/dorp/rondetafel.webp",
   dorp_rondetafel_soldaten: "assets/dorp/rondetafel-soldaten.webp",
@@ -1614,22 +1615,23 @@ const DORP_KOLOMMEN = 8, DORP_RIJEN = 6;
 const DORP_CAPACITEIT = {tent:4, hut:6, groepstent:12};
 const DORPGEBOUWEN = {
   tent:           {naam:"Tent", plaatje:"dorp_tent", prijs:5, noot:"Onderdak voor een handvol mannen. Snel opgezet, net zo snel weer weg."},
-  hut:            {naam:"Houten hut", plaatje:"dorp_hut", prijs:15, noot:"Steviger, blijvender. Ruimte voor meer manschappen."},
+  hut:            {naam:"Houten hut", plaatje:"dorp_hut", prijs:15, hout:5, noot:"Steviger, blijvender. Ruimte voor meer manschappen."},
   vuur:           {naam:"Kampvuur", plaatje:"dorp_vuur", prijs:3, noot:"Het middelpunt van het kamp, waar het leger zich verzamelt."},
-  graanschuur:    {naam:"Graanschuur", plaatje:"dorp_graanschuur", prijs:20, noot:"Begint leeg. Stuur manschappen op pad om hem te vullen."},
-  mijnbouw_put:   {naam:"Mijnbouwput", plaatje:"dorp_mijnbouwput", prijs:18, noot:"Kleine productie. Plaats voor 3 mijnwerkers."},
-  mijnbouw_toren: {naam:"Mijnbouwtoren", plaatje:"dorp_mijnbouwtoren", prijs:60, noot:"Grote productie. Plaats voor 10 mijnwerkers."},
-  wachttoren:     {naam:"Wachttoren", plaatje:"dorp_wachttoren", prijs:25, noot:"Onbewaakt tot je er manschappen op zet."},
+  graanschuur:    {naam:"Graanschuur", plaatje:"dorp_graanschuur", prijs:20, hout:7, noot:"Begint leeg. Stuur manschappen op pad om hem te vullen."},
+  mijnbouw_put:   {naam:"Mijnbouwput", plaatje:"dorp_mijnbouwput", prijs:18, hout:6, paardSlots:1, noot:"Kleine productie. Plaats voor 3 mijnwerkers."},
+  mijnbouw_toren: {naam:"Mijnbouwtoren", plaatje:"dorp_mijnbouwtoren", prijs:60, hout:20, paardSlots:1, noot:"Grote productie. Plaats voor 10 mijnwerkers."},
+  wachttoren:     {naam:"Wachttoren", plaatje:"dorp_wachttoren", prijs:25, hout:8, noot:"Onbewaakt tot je er manschappen op zet."},
   rondetafel:     {naam:"Ronde tafel", plaatje:"dorp_rondetafel", prijs:35, noot:"Waar Renze bijeenkomsten en de dorpsraad houdt."},
   groepstent:     {naam:"Groepstent", plaatje:"dorp_groepstent", prijs:30, noot:"Slaapplaats voor tot twaalf soldaten."},
   vaandeltent:    {naam:"Vaandeltent", plaatje:"dorp_vaandeltent", prijs:40, noot:"Renzes eigen tent. Uitstraling en macht."},
   voederplaats:   {naam:"Voederplaats", plaatje:"dorp_voederplaats", prijs:8, noot:"Houdt Vroeg gezond en sterk."},
   waterput:       {naam:"Waterput", plaatje:"dorp_waterput", prijs:10, noot:"Geen water meer hoeven halen in het dorp."},
-  plaggenhutboerderij: {naam:"Plaggenhutboerderij", plaatje:"dorp_plaggenhutboerderij", prijs:45, breedte:2, hoogte:2, noot:"Varkens en kippen die zichzelf vermenigvuldigen — vult de graanschuur vanzelf bij, dag na dag."},
-  paardenfokkerij: {naam:"Paardenfokkerij", plaatje:"dorp_paardenfokkerij", prijs:30, noot:"Een veulen per 7 dagen, zolang er ruimte is bij de voederbakken."}
+  plaggenhutboerderij: {naam:"Plaggenhutboerderij", plaatje:"dorp_plaggenhutboerderij", prijs:45, hout:15, breedte:2, hoogte:2, paardSlots:1, noot:"Varkens en kippen die zichzelf vermenigvuldigen — vult de graanschuur vanzelf bij, dag na dag."},
+  paardenfokkerij: {naam:"Paardenfokkerij", plaatje:"dorp_paardenfokkerij", prijs:30, hout:10, noot:"Een veulen per 7 dagen, zolang er ruimte is bij de voederbakken."},
+  houtzagerij:    {naam:"Houtzagerij", plaatje:"dorp_houtzagerij", prijs:35, breedte:2, hoogte:1, paardSlots:2, noot:"Zaagt stapels planken. Werkt op paardenkracht — zonder werkpaard geen productie, met een tweede paard 50% meer."}
 };
 const PAARDENNAMEN = ["Bles","Vos","Schimmel","Falco","Storm","Donder","Wolk","Fakkel","Anemoon","Distel","Merel","Haas"];
-const PAARDENGEBOUWEN = ["mijnbouw_put","mijnbouw_toren","plaggenhutboerderij"];
+const PAARDENGEBOUWEN = ["mijnbouw_put","mijnbouw_toren","plaggenhutboerderij","houtzagerij"];
 function dorpPaardenCapaciteit(){
   return S.dorp.grid.filter(c=>c && c.type==="voederplaats").length * 4;
 }
@@ -1643,10 +1645,11 @@ if(!S.dorp || !Array.isArray(S.dorp.grid) || S.dorp.grid.length !== DORP_KOLOMME
     grid: new Array(DORP_KOLOMMEN*DORP_RIJEN).fill(null),
     dag: 0,
     zelfbestuur: false,
-    grondstoffen: {steenkool:0, ijzer:0, goud:0}
+    grondstoffen: {steenkool:0, ijzer:0, goud:0, hout:0}
   };
 }
-if(!S.dorp.grondstoffen) S.dorp.grondstoffen = {steenkool:0, ijzer:0, goud:0};
+if(!S.dorp.grondstoffen) S.dorp.grondstoffen = {steenkool:0, ijzer:0, goud:0, hout:0};
+if(S.dorp.grondstoffen.hout === undefined) S.dorp.grondstoffen.hout = 0;
 if(typeof S.dorp.dag !== "number") S.dorp.dag = 0;
 if(typeof S.dorp.zelfbestuur !== "boolean") S.dorp.zelfbestuur = false;
 if(S.dorp.dievenzoekers === undefined) S.dorp.dievenzoekers = null;
@@ -1654,6 +1657,10 @@ if(!Array.isArray(S.paarden)) S.paarden = [];
 S.dorp.grid.forEach(cel=>{
   if(cel && cel.type === "graanschuur" && !Array.isArray(cel.onderweg)){
     cel.onderweg = cel.onderweg ? [cel.onderweg] : [];
+  }
+  if(cel && PAARDENGEBOUWEN.includes(cel.type) && !Array.isArray(cel.paarden)){
+    cel.paarden = cel.paard ? [cel.paard] : [];
+    delete cel.paard;
   }
 });
 
@@ -1764,15 +1771,17 @@ function dorpRondetafelTerug(){
 function dorpBouwen(id){
   if(dorpSelectie === null) return;
   const gebouw = DORPGEBOUWEN[id];
-  if(!gebouw || S.munten < gebouw.prijs) return;
+  if(!gebouw || S.munten < gebouw.prijs || S.dorp.grondstoffen.hout < (gebouw.hout||0)) return;
   const {breedte, hoogte} = dorpVoetafdruk(id);
   const vakjes = dorpVakjesVoorPlacement(dorpSelectie, breedte, hoogte);
   if(!vakjes || !vakjes.every(j => !S.dorp.grid[j])) return;
   S.munten -= gebouw.prijs;
+  S.dorp.grondstoffen.hout -= (gebouw.hout||0);
   const cel = {type:id};
   if(id === "graanschuur"){ cel.vol = 0; cel.onderweg = []; }
   if(id === "mijnbouw_put" || id === "mijnbouw_toren"){ cel.grondstof = null; cel.werkers = 0; }
   if(id === "wachttoren"){ cel.stand = "leeg"; cel.bemanning = []; }
+  if(PAARDENGEBOUWEN.includes(id)){ cel.paarden = []; }
   vakjes.forEach(j=>{ S.dorp.grid[j] = (j === dorpSelectie) ? cel : {type:"__bezet", anker:dorpSelectie}; });
   dorpSelectie = null;
   schrijf(`Bouwde een ${gebouw.naam.toLowerCase()} in de Zandboks.`,2);
@@ -1789,9 +1798,11 @@ function dorpSlopen(){
       const m = S.manschappen.find(m=>m.naam===naam);
       if(m) m.opdracht = null;
     });
-    if(cel.paard){
-      const p = S.paarden.find(p=>p.naam===cel.paard);
-      if(p) p.toegewezenAan = null;
+    if(cel.paarden){
+      cel.paarden.forEach(paardNaam=>{
+        const p = S.paarden.find(p=>p.naam===paardNaam);
+        if(p) p.toegewezenAan = null;
+      });
     }
   }
   S.dorp.grid.forEach((c,j)=>{
@@ -1846,13 +1857,16 @@ function dorpVolgendeDag(){
       if(S.manschappen.length) cel.vol = Math.max(0, cel.vol - 4);
     } else if(cel.type === "mijnbouw_put" && cel.grondstof && cel.werkers>0){
       const basis = Math.max(1, Math.round(3 * cel.werkers/3));
-      S.dorp.grondstoffen[cel.grondstof] += cel.paard ? Math.round(basis*1.5) : basis;
+      S.dorp.grondstoffen[cel.grondstof] += cel.paarden.length ? Math.round(basis*1.5) : basis;
     } else if(cel.type === "mijnbouw_toren" && cel.grondstof && cel.werkers>0){
       const basis = Math.max(1, Math.round(12 * cel.werkers/10));
-      S.dorp.grondstoffen[cel.grondstof] += cel.paard ? Math.round(basis*1.5) : basis;
+      S.dorp.grondstoffen[cel.grondstof] += cel.paarden.length ? Math.round(basis*1.5) : basis;
     } else if(cel.type === "plaggenhutboerderij"){
       const schuur = S.dorp.grid.find(c=>c && c.type==="graanschuur");
-      if(schuur) schuur.vol = Math.min(100, schuur.vol + (cel.paard ? 8 : 5));
+      if(schuur) schuur.vol = Math.min(100, schuur.vol + (cel.paarden.length ? 8 : 5));
+    } else if(cel.type === "houtzagerij"){
+      if(cel.paarden.length === 1) S.dorp.grondstoffen.hout += 6;
+      else if(cel.paarden.length >= 2) S.dorp.grondstoffen.hout += 9;
     } else if(cel.type === "paardenfokkerij"){
       cel.dagenTotVeulen = Math.max(0, (cel.dagenTotVeulen===undefined?7:cel.dagenTotVeulen) - 1);
       if(cel.dagenTotVeulen === 0 && S.paarden.length < dorpPaardenCapaciteit()){
@@ -1940,9 +1954,10 @@ function dorpPaardGeefAanManschap(paardNaam, manschapNaam){
 function dorpPaardGeefAanGebouw(paardNaam, vak){
   const p = S.paarden.find(p=>p.naam===paardNaam);
   const cel = S.dorp.grid[vak];
-  if(!p || p.soort!=="werkpaard" || p.toegewezenAan || !cel || cel.paard || !PAARDENGEBOUWEN.includes(cel.type)) return;
+  if(!p || p.soort!=="werkpaard" || p.toegewezenAan || !cel || !PAARDENGEBOUWEN.includes(cel.type)) return;
+  if(cel.paarden.length >= (DORPGEBOUWEN[cel.type].paardSlots||1)) return;
   p.toegewezenAan = {type:"gebouw", vak};
-  cel.paard = paardNaam;
+  cel.paarden.push(paardNaam);
   schrijf(`Zette ${paardNaam} in bij de ${DORPGEBOUWEN[cel.type].naam.toLowerCase()} in de Zandboks.`,1);
   bewaar(); render();
 }
@@ -1954,7 +1969,10 @@ function dorpPaardTerugnemen(paardNaam){
     if(m) m.paard = null;
   } else if(p.toegewezenAan.type === "gebouw"){
     const cel = S.dorp.grid[p.toegewezenAan.vak];
-    if(cel) cel.paard = null;
+    if(cel && cel.paarden){
+      const idx = cel.paarden.indexOf(paardNaam);
+      if(idx !== -1) cel.paarden.splice(idx,1);
+    }
   }
   p.toegewezenAan = null;
   schrijf(`Haalde ${paardNaam} terug naar de voederbak.`,1);
@@ -3071,7 +3089,7 @@ function toonDorp(){
         <button type="button" onclick="kaartZoomReset('zandboks')" aria-label="Kaart passend maken">⤢</button>
       </div>
     </div>
-    <p class="cijfers" style="margin-top:.6rem">Penningen: ${S.munten} · Manschappen: ${S.manschappen.length}/${dorpCapaciteit()} · Steenkool: ${grondstoffen.steenkool} · IJzer: ${grondstoffen.ijzer} · Goud: ${grondstoffen.goud}</p>
+    <p class="cijfers" style="margin-top:.6rem">Penningen: ${S.munten} · Manschappen: ${S.manschappen.length}/${dorpCapaciteit()} · Paarden: ${S.paarden.length}/${dorpPaardenCapaciteit()} · Steenkool: ${grondstoffen.steenkool} · IJzer: ${grondstoffen.ijzer} · Goud: ${grondstoffen.goud} · Hout: ${grondstoffen.hout}</p>
     <p style="margin-top:.6rem">
       <button class="knop" onclick="dorpVolgendeDag()">Volgende dag</button>
       ${S.vlaggen.verbannen && !S.vlaggen.gratie
@@ -3095,10 +3113,12 @@ function tussendoorDorpVak(){
       <p class="cijfers">Penningen: ${S.munten}</p>
       <div class="keuzes" style="margin-top:.4rem">` + Object.entries(DORPGEBOUWEN).map(([id,g])=>{
         const past = dorpKanBouwenOp(i, id);
-        const kan = past && S.munten >= g.prijs;
+        const genoegHout = S.dorp.grondstoffen.hout >= (g.hout||0);
+        const kan = past && S.munten >= g.prijs && genoegHout;
         const grootte = (g.breedte>1 || g.hoogte>1) ? ` (${g.breedte}×${g.hoogte} vakjes)` : "";
-        const noot = !past ? `Past hier niet — ${g.breedte}×${g.hoogte} vakjes nodig, allemaal leeg.` : g.noot;
-        return `<button class="keuze" ${kan?"":"disabled"} style="${kan?"":"opacity:.5"}" onclick="dorpBouwen('${id}')">${g.naam}${grootte} — ${g.prijs}p<small>${noot}</small></button>`;
+        const prijstekst = g.hout ? `${g.prijs}p, ${g.hout} hout` : `${g.prijs}p`;
+        const noot = !past ? `Past hier niet — ${g.breedte}×${g.hoogte} vakjes nodig, allemaal leeg.` : (!genoegHout ? `Niet genoeg hout — ${g.hout} nodig, ${S.dorp.grondstoffen.hout} in voorraad.` : g.noot);
+        return `<button class="keuze" ${kan?"":"disabled"} style="${kan?"":"opacity:.5"}" onclick="dorpBouwen('${id}')">${g.naam}${grootte} — ${prijstekst}<small>${noot}</small></button>`;
       }).join("") + `</div>
       <p style="margin-top:.8rem"><button class="knop knop--stil" onclick="dorpMenuSluiten()">Toch niet.</button></p>
     </div></div>`;
@@ -3130,13 +3150,17 @@ function tussendoorDorpVak(){
           <button class="keuze" onclick="dorpMijnbouwKiesGrondstof(${i},'goud')">Goud</button>
         </div>`;
     } else {
-      inhoud += `<p class="cijfers">Wint: ${cel.grondstof} · Mijnwerkers: ${cel.werkers}/${max}</p>`;
+      inhoud += `<p class="cijfers">Wint: ${cel.grondstof} · Mijnwerkers: ${cel.werkers}/${max} · Werkpaard: ${cel.paarden.length ? cel.paarden[0] + " (+50% productie)" : "geen"}</p>`;
       acties = cel.werkers < max
         ? `<div class="keuzes" style="margin-top:.4rem">
             <button class="keuze" ${S.munten<6?"disabled":""} style="${S.munten<6?"opacity:.5":""}" onclick="dorpMijnbouwWerf(${i})">Werf een mijnwerker — 6p<small>De ertsvoogd stuurt iemand het gebied in.</small></button>
           </div>`
         : `<p class="cijfers">Volledig bemand.</p>`;
     }
+  } else if(cel.type === "plaggenhutboerderij"){
+    inhoud += `<p class="cijfers">Werkpaard: ${cel.paarden.length ? cel.paarden[0] + " (+3% extra vulling per dag)" : "geen"}</p>`;
+  } else if(cel.type === "houtzagerij"){
+    inhoud += `<p class="cijfers">Paarden: ${cel.paarden.length}/2${cel.paarden.length ? " (" + cel.paarden.join(", ") + ")" : ""} · Productie: ${cel.paarden.length===0?"geen":cel.paarden.length===1?"6 hout per dag":"9 hout per dag"}</p>`;
   } else if(cel.type === "wachttoren"){
     const statusTekst = cel.stand === "leeg" ? "onbewaakt" : cel.stand === "wacht" ? "bewaakt" : "bemand met schutters";
     inhoud += `<p class="cijfers">Status: ${statusTekst}</p>`;
@@ -3261,9 +3285,12 @@ function tussendoorDorpVak(){
           if(!beschikbaar.length) return `<button class="keuze" disabled style="opacity:.5">${p.naam} (ruiterpaard) — vrij.<small>Geen manschap beschikbaar.</small></button>`;
           return beschikbaar.map(m=>`<button class="keuze" onclick="dorpPaardGeefAanManschap('${p.naam}','${m.naam}')">${p.naam} — geef aan ${m.naam}.<small>Ruiterpaard.</small></button>`).join("");
         }
-        const gebouwen = S.dorp.grid.map((c,idx)=>({c,idx})).filter(({c})=>c && PAARDENGEBOUWEN.includes(c.type) && !c.paard);
+        const gebouwen = S.dorp.grid.map((c,idx)=>({c,idx})).filter(({c})=>c && PAARDENGEBOUWEN.includes(c.type) && c.paarden.length < (DORPGEBOUWEN[c.type].paardSlots||1));
         if(!gebouwen.length) return `<button class="keuze" disabled style="opacity:.5">${p.naam} (werkpaard) — vrij.<small>Geen geschikt gebouw beschikbaar.</small></button>`;
-        return gebouwen.map(({c,idx})=>`<button class="keuze" onclick="dorpPaardGeefAanGebouw('${p.naam}',${idx})">${p.naam} — zet in bij ${DORPGEBOUWEN[c.type].naam.toLowerCase()}.<small>Werkpaard, verhoogt de productie.</small></button>`).join("");
+        return gebouwen.map(({c,idx})=>{
+          const slots = DORPGEBOUWEN[c.type].paardSlots||1;
+          return `<button class="keuze" onclick="dorpPaardGeefAanGebouw('${p.naam}',${idx})">${p.naam} — zet in bij ${DORPGEBOUWEN[c.type].naam.toLowerCase()} (${c.paarden.length}/${slots}).<small>Werkpaard, verhoogt de productie.</small></button>`;
+        }).join("");
       }).join("") + `</div>`;
     }
   }
