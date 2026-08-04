@@ -299,6 +299,10 @@ const ASSETS = {
   jachtmes:    "assets/wapen/jachtmes.webp",
   knuppel:     "assets/wapen/knuppel.webp",
   zwaard:      "assets/wapen/zwaard-van-weel.webp",
+  kruisboog:   "assets/wapen/kruisboog.webp",
+  boog:        "assets/wapen/boog.webp",
+  korte_piek:  "assets/wapen/korte-piek.webp",
+  ridderhelm:  "assets/wapen/ridderhelm.webp",
   kanselier:   "assets/scene/kanselier.webp",
   karavaan:    "assets/scene/karavaan.webp",
   steeg:       "assets/scene/steeg.webp",
@@ -434,11 +438,12 @@ const ITEMS = {
   gevechtspak:    {naam:"Leren kolder",       laag:"midden", gewicht:2, ontzag:1, opval:1, noot:"Eenvoudig gevechtspak. Houdt een mes tegen, één keer."},
   malienkolder:   {naam:"Maliënkolder",       laag:"midden", gewicht:4, ontzag:3, opval:3, noot:"Van Weel. Achtduizend ringen, met de hand gesloten."},
   harnas_gerlof:  {naam:"Harnas van Weel",    laag:"harnas", gewicht:5, ontzag:5, opval:5, noot:"Een deuk boven het hart die niemand meer uitklopt."},
+  ridderhelm:     {naam:"Ridderhelm",         laag:"helm",   gewicht:2, ontzag:2, opval:2, noot:"Ziet meer dan hij hoort. Ademt amper."},
   jachtmes:       {naam:"Jachtmes",           laag:"wapen",  gewicht:1, ontzag:0, opval:0, bereik:0, noot:"Voor hazen. Nu voor iets anders."},
   knuppel:        {naam:"Knuppel",            laag:"wapen",  gewicht:2, ontzag:1, opval:1, bereik:1, noot:"Breekt botten, geen huid."},
   zwaard:         {naam:"Zwaard van Weel",    laag:"wapen",  gewicht:3, ontzag:4, opval:3, bereik:2, noot:"Op de kling staat: NIET VOOR MIJ."}
 };
-const LAAGNAMEN = {onder:"Onderkleed", midden:"Midden", harnas:"Harnas", wapen:"Wapen"};
+const LAAGNAMEN = {onder:"Onderkleed", midden:"Midden", harnas:"Harnas", helm:"Helm", wapen:"Wapen"};
 
 /* ---------------------------------------------------------------------
    3b. HET LEGER — dorpelingen werven, trainen, kleden
@@ -498,7 +503,7 @@ function nieuweStaat(){
     locatie: null,
     fluisters: [],
     vlaggen: {},
-    dracht: {onder:"linnen_hemd", midden:"gelapt_wambuis", harnas:null, wapen:null},
+    dracht: {onder:"linnen_hemd", midden:"gelapt_wambuis", harnas:null, helm:null, wapen:null},
     kist: ["linnen_hemd","gelapt_wambuis","jachtmes"],
     voorraad: [],
     dorp: {grid: []},
@@ -526,7 +531,7 @@ if(!S.voorraad) S.voorraad = [];
 function bewaar(){ OPSLAG.schrijf(S); }
 
 /* Afgeleide waarden */
-function gedragen(){ return ["onder","midden","harnas","wapen"].map(l=>S.dracht[l]).filter(Boolean).map(i=>itemInfo(i)); }
+function gedragen(){ return ["onder","midden","harnas","helm","wapen"].map(l=>S.dracht[l]).filter(Boolean).map(i=>itemInfo(i)); }
 function som(veld){ return gedragen().reduce((t,i)=>t+(i[veld]||0),0); }
 function uithouding(){ return Math.max(2, 12 - som("gewicht")); }
 function ontzag(){ return som("ontzag") + (dorpHeeftGebouw("vaandeltent") ? 2 : 0); }
@@ -1135,6 +1140,14 @@ function smidseKopen(id){
   S.munten -= item.prijs;
   S.voorraad.push(id);
   schrijf(`Kocht ${item.naam} bij de smidse van Beversluis, voor de voorraad.`,2);
+  bewaar(); render();
+}
+const RIDDERHELM_PRIJS = 18;
+function smidseKoopRidderhelm(){
+  if(S.munten < RIDDERHELM_PRIJS || S.kist.includes("ridderhelm")) return;
+  S.munten -= RIDDERHELM_PRIJS;
+  S.kist.push("ridderhelm");
+  schrijf("Kocht een ridderhelm bij de smidse van Beversluis.",2);
   bewaar(); render();
 }
 function voorraadGeefAanRenze(id){
@@ -2205,7 +2218,7 @@ function toonUitrusting(){
       <div class="waarde"><span class="label">Gewicht</span><b>${som("gewicht")}</b></div>
     </div><hr class="regel"><div class="lagen">`;
 
-  for(const laag of ["onder","midden","harnas","wapen"]){
+  for(const laag of ["onder","midden","harnas","helm","wapen"]){
     const huidig = S.dracht[laag];
     const opties = S.kist.filter(id=>itemInfo(id).laag===laag);
     h += `<div class="laag">
@@ -2750,7 +2763,11 @@ function tussendoorSmidse(){
     }).join("") + `</div>` +
     (Object.keys(telling).length ? `<hr class="regel"><p class="label">In voorraad</p><p class="cijfers">${
       Object.entries(telling).map(([id,n])=>`${VOORRAADWAPENS[id].naam}${n>1?` ×${n}`:""}`).join(", ")
-    }</p>` : "") + `
+    }</p>` : "") +
+    (S.kist.includes("ridderhelm") ? "" : `<hr class="regel"><p class="label">Voor jezelf, niet voor de voorraad</p>
+    <div class="keuzes" style="margin-top:.4rem">
+      <button class="keuze" ${S.munten<RIDDERHELM_PRIJS?"disabled":""} style="${S.munten<RIDDERHELM_PRIJS?"opacity:.5":""}" onclick="smidseKoopRidderhelm()">Ridderhelm — ${RIDDERHELM_PRIJS}p<small>Ziet meer dan hij hoort. Ademt amper.</small></button>
+    </div>`) + `
     <p style="margin-top:.8rem"><button class="knop knop--stil" onclick="winkelSluiten()">Genoeg voor vandaag.</button></p>
   </div></div>`;
 }
