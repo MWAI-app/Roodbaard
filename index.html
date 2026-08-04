@@ -2990,18 +2990,41 @@ function tussendoorDorpVak(){
   } else if(cel.type === "rondetafel"){
     if(dorpSubscherm === "manschappen"){
       plaatjeId = "dorp_rondetafel_soldaten";
+      const beschikbaarM = S.manschappen.filter(manschapBeschikbaar);
+      const trainbaar = beschikbaarM.filter(m=>m.opleiding<2);
+      const wachtActief = S.manschappen.find(m=>m.opdracht && m.opdracht.type==="dorpswacht");
+
       inhoud = `<p>De manschappen zitten aan tafel, wachtend op wat er gezegd gaat worden.</p>`;
+
       acties = `<div class="keuzes" style="margin-top:.4rem">
-        <button class="keuze" onclick="dorpRondetafelBijeenroepen()">Bespreek bewapening en stemming.<small>+1 eer.</small></button>
-      </div>
+        <button class="keuze" onclick="dorpRondetafelBijeenroepen()">Bespreek bewapening en stemming.<small>+1 eer.</small></button>`;
+
+      acties += trainbaar.map(m=>
+        `<button class="keuze" onclick="dorpOudstenTrainen('${m.naam}')">Stuur ${m.naam} op training.<small>Terug over 4 dagen, dan ${OPLEIDINGEN[m.opleiding+1]}.</small></button>`
+      ).join("");
+
+      if(wachtActief){
+        acties += `<p class="cijfers">${wachtActief.naam} bewaakt het dorp — nog ${wachtActief.opdracht.dagenOver} dag${wachtActief.opdracht.dagenOver===1?"":"en"}.</p>`;
+      } else {
+        acties += beschikbaarM.map(m=>
+          `<button class="keuze" onclick="dorpOudstenBewaken('${m.naam}')">Zet ${m.naam} op wacht in het dorp.<small>2 dagen, minder kans op diefstal.</small></button>`
+        ).join("");
+      }
+
+      if(S.dorp.dievenzoekers){
+        acties += `<p class="cijfers">${S.dorp.dievenzoekers.namen.join(", ")} zoeken naar dieven — nog ${S.dorp.dievenzoekers.dagenOver} dag${S.dorp.dievenzoekers.dagenOver===1?"":"en"}.</p>`;
+      } else {
+        const drieBeschikbaar = beschikbaarM.length >= 3;
+        acties += `<button class="keuze" ${drieBeschikbaar?"":"disabled"} style="${drieBeschikbaar?"":"opacity:.5"}" onclick="dorpOudstenDievenZoeken()">Stuur drie man op zoek naar dieven.<small>3 dagen. (${beschikbaarM.length} beschikbaar)</small></button>`;
+      }
+
+      acties += `</div>
       <p style="margin-top:.6rem"><button class="knop knop--stil" onclick="dorpRondetafelTerug()">Terug naar de tafel.</button></p>`;
     } else if(dorpSubscherm === "oudsten"){
       plaatjeId = "dorp_rondetafel_oudsten";
       const graanschuurCel = S.dorp.grid.find(c=>c && c.type==="graanschuur");
       const graanschuurIdx = S.dorp.grid.findIndex(c=>c && c.type==="graanschuur");
       const beschikbaar = S.manschappen.filter(manschapBeschikbaar);
-      const trainbaar = beschikbaar.filter(m=>m.opleiding<2);
-      const wachtActief = S.manschappen.find(m=>m.opdracht && m.opdracht.type==="dorpswacht");
       const prijzen = {steenkool:2, ijzer:4, goud:10};
 
       inhoud = `<p>De dorpsoudsten regelen wat er geregeld moet worden — zolang niemand hen tegenspreekt.</p>`;
@@ -3022,25 +3045,6 @@ function tussendoorDorpVak(){
         const aantal = S.dorp.grondstoffen[g];
         acties += `<button class="keuze" ${aantal<=0?"disabled":""} style="${aantal<=0?"opacity:.5":""}" onclick="dorpOudstenVerkopen('${g}')">Verkoop ${aantal} ${g} — ${aantal*prijzen[g]}p<small>Tegen de vaste prijs van de kanselier.</small></button>`;
       });
-
-      acties += trainbaar.map(m=>
-        `<button class="keuze" onclick="dorpOudstenTrainen('${m.naam}')">Stuur ${m.naam} op training.<small>Terug over 4 dagen, dan ${OPLEIDINGEN[m.opleiding+1]}.</small></button>`
-      ).join("");
-
-      if(wachtActief){
-        acties += `<p class="cijfers">${wachtActief.naam} bewaakt het dorp — nog ${wachtActief.opdracht.dagenOver} dag${wachtActief.opdracht.dagenOver===1?"":"en"}.</p>`;
-      } else {
-        acties += beschikbaar.map(m=>
-          `<button class="keuze" onclick="dorpOudstenBewaken('${m.naam}')">Zet ${m.naam} op wacht in het dorp.<small>2 dagen, minder kans op diefstal.</small></button>`
-        ).join("");
-      }
-
-      if(S.dorp.dievenzoekers){
-        acties += `<p class="cijfers">${S.dorp.dievenzoekers.namen.join(", ")} zoeken naar dieven — nog ${S.dorp.dievenzoekers.dagenOver} dag${S.dorp.dievenzoekers.dagenOver===1?"":"en"}.</p>`;
-      } else {
-        const drieBeschikbaar = beschikbaar.length >= 3;
-        acties += `<button class="keuze" ${drieBeschikbaar?"":"disabled"} style="${drieBeschikbaar?"":"opacity:.5"}" onclick="dorpOudstenDievenZoeken()">Stuur drie man op zoek naar dieven.<small>3 dagen. (${beschikbaar.length} beschikbaar)</small></button>`;
-      }
 
       if(!S.dorp.zelfbestuur){
         acties += `<button class="keuze" onclick="dorpRondetafelOudsten()">Verklaar zelfbestuur.<small>Laat de graanschuur voortaan vanzelf bijvullen.</small></button>`;
