@@ -1627,8 +1627,10 @@ if(!S.dorp || !Array.isArray(S.dorp.grid) || S.dorp.grid.length !== DORP_KOLOMME
 if(!S.dorp.grondstoffen) S.dorp.grondstoffen = {steenkool:0, ijzer:0, goud:0};
 if(typeof S.dorp.dag !== "number") S.dorp.dag = 0;
 if(typeof S.dorp.zelfbestuur !== "boolean") S.dorp.zelfbestuur = false;
+if(S.dorp.dievenzoekers === undefined) S.dorp.dievenzoekers = null;
 
 let dorpSelectie = null;
+let dorpSubscherm = null;
 
 function dorpOpenen(){
   S.weergave = "dorp";
@@ -1677,10 +1679,20 @@ function tussendoorVerbanning(){
 }
 function dorpVakjeKiezen(i){
   dorpSelectie = i;
+  dorpSubscherm = null;
   render();
 }
 function dorpMenuSluiten(){
   dorpSelectie = null;
+  dorpSubscherm = null;
+  render();
+}
+function dorpSubschermKiezen(naam){
+  dorpSubscherm = naam;
+  render();
+}
+function dorpRondetafelTerug(){
+  dorpSubscherm = null;
   render();
 }
 function dorpBouwen(id){
@@ -1711,6 +1723,7 @@ function dorpSlopen(){
   }
   S.dorp.grid[dorpSelectie] = null;
   dorpSelectie = null;
+  dorpSubscherm = null;
   bewaar(); render();
 }
 
@@ -1763,6 +1776,42 @@ function dorpVolgendeDag(){
       S.dorp.grondstoffen[cel.grondstof] += Math.max(1, Math.round(12 * cel.werkers/10));
     }
   });
+
+  S.manschappen.forEach(m=>{
+    if(!m.opdracht) return;
+    if(m.opdracht.type === "training"){
+      m.opdracht.dagenOver -= 1;
+      if(m.opdracht.dagenOver <= 0){
+        m.opleiding = Math.min(2, m.opleiding + 1);
+        schrijf(`${m.naam} kwam terug van training in de Zandboks — nu ${OPLEIDINGEN[m.opleiding]}.`,2);
+        m.opdracht = null;
+      }
+    } else if(m.opdracht.type === "dorpswacht"){
+      m.opdracht.dagenOver -= 1;
+      if(m.opdracht.dagenOver <= 0) m.opdracht = null;
+    }
+  });
+
+  if(S.dorp.dievenzoekers){
+    S.dorp.dievenzoekers.dagenOver -= 1;
+    if(S.dorp.dievenzoekers.dagenOver <= 0){
+      const namen = S.dorp.dievenzoekers.namen;
+      namen.forEach(naam=>{
+        const m = S.manschappen.find(m=>m.naam===naam);
+        if(m) m.opdracht = null;
+      });
+      if(Math.random() < 0.6){
+        const buit = 10 + Math.floor(Math.random()*21);
+        S.munten += buit;
+        S.eer += 1;
+        schrijf(`${namen.join(", ")} vonden de dieven en brachten ${buit} penningen terug naar de Zandboks.`,2);
+      } else {
+        schrijf(`${namen.join(", ")} kwamen terug zonder spoor van de dieven.`,2);
+      }
+      S.dorp.dievenzoekers = null;
+    }
+  }
+
   bewaar(); render();
 }
 
@@ -1820,13 +1869,71 @@ function dorpWachtTerughalen(i){
 function dorpRondetafelBijeenroepen(){
   S.eer += 1;
   schrijf("Riep de manschappen bijeen aan de ronde tafel in de Zandboks — de stemming is goed.",2);
-  dorpSelectie = null;
   bewaar(); render();
 }
 function dorpRondetafelOudsten(){
   S.dorp.zelfbestuur = true;
   schrijf("Sprak met de dorpsoudsten aan de ronde tafel — voortaan regelt het dorp zelf wanneer de graanschuur wordt bijgevuld.",2);
-  dorpSelectie = null;
+  bewaar(); render();
+}
+function dorpOudstenVoorraadVragen(){
+  const cel = S.dorp.grid.find(c=>c && c.type==="graanschuur");
+  if(!cel) return;
+  const beveiligd = S.dorp.grid.some(c=>c && c.type==="wachttoren" && c.stand!=="leeg")
+    || S.manschappen.some(m=>m.opdracht && m.opdracht.type==="dorpswacht");
+  const kansOpDiefstal = beveiligd ? 0.1 : 0.25;
+  if(cel.vol > 0 && Math.random() < kansOpDiefstal){
+    const verlies = Math.min(cel.vol, 5 + Math.floor(Math.random()*11));
+    cel.vol -= verlies;
+    S.vlaggen.oudsten_voorraad_tekst = `Diefstal — er is ${verlies}% van de voorraad spoorloos verdwenen. De dorpsoudsten beloven het uit te zoeken.`;
+  } else {
+    S.vlaggen.oudsten_voorraad_tekst = `De graanschuur staat op ${cel.vol}% vulling.`;
+  }
+  bewaar(); render();
+}
+const WEELLAND_NIEUWS = [
+  "«Weelland houdt zich stil,» zegt de gezant. «Stiller dan gewoonlijk, wat op zichzelf al iets zegt.»",
+  "De gezant meldt dat de oude eik bij Weelland is omgewaaid in de laatste storm. Niemand durft te zeggen wat dat betekent.",
+  "«Ze vragen daar naar een naam met een rode baard,» zegt de gezant. «Ik heb niets gezegd.»",
+  "Weelland stuurt geen bericht terug dit keer. Dat is zelf ook een soort bericht.",
+  "De gezant komt met lege handen terug uit Weelland — geen nieuws is volgens hem beter dan slecht nieuws."
+];
+function dorpOudstenGezantVragen(){
+  S.vlaggen.oudsten_gezant_tekst = WEELLAND_NIEUWS[Math.floor(Math.random()*WEELLAND_NIEUWS.length)];
+  bewaar(); render();
+}
+function dorpOudstenVerkopen(grondstof){
+  const prijzen = {steenkool:2, ijzer:4, goud:10};
+  const aantal = S.dorp.grondstoffen[grondstof];
+  if(!aantal) return;
+  const opbrengst = aantal * prijzen[grondstof];
+  S.munten += opbrengst;
+  schrijf(`Verkocht ${aantal} ${grondstof} vanuit de Zandboks, voor ${opbrengst} penningen.`,1);
+  S.dorp.grondstoffen[grondstof] = 0;
+  bewaar(); render();
+}
+function dorpOudstenTrainen(naam){
+  const m = S.manschappen.find(m=>m.naam===naam);
+  if(!m || m.opdracht || m.opleiding>=2) return;
+  m.opdracht = {type:"training", dagenOver:4};
+  schrijf(`Stuurde ${naam} op training, op bevel van de dorpsoudsten.`,1);
+  bewaar(); render();
+}
+function dorpOudstenBewaken(naam){
+  const m = S.manschappen.find(m=>m.naam===naam);
+  if(!m || m.opdracht) return;
+  m.opdracht = {type:"dorpswacht", dagenOver:2};
+  schrijf(`Zette ${naam} op wacht in de Zandboks, op bevel van de dorpsoudsten.`,1);
+  bewaar(); render();
+}
+function dorpOudstenDievenZoeken(){
+  if(S.dorp.dievenzoekers) return;
+  const beschikbaar = S.manschappen.filter(manschapBeschikbaar);
+  if(beschikbaar.length < 3) return;
+  const gekozen = beschikbaar.slice(0,3);
+  gekozen.forEach(m=>{ m.opdracht = {type:"dievenzoeken"}; });
+  S.dorp.dievenzoekers = {namen:gekozen.map(m=>m.naam), dagenOver:3};
+  schrijf(`Stuurde ${gekozen.map(m=>m.naam).join(", ")} op zoek naar dieven, op bevel van de dorpsoudsten.`,1);
   bewaar(); render();
 }
 function dorpVroegVoeren(){
@@ -2177,6 +2284,13 @@ function legerOntsla(i){
         if(j !== -1){ cel.bemanning.splice(j,1); if(!cel.bemanning.length) cel.stand = "leeg"; }
       }
     });
+    if(S.dorp.dievenzoekers){
+      const j = S.dorp.dievenzoekers.namen.indexOf(m.naam);
+      if(j !== -1){
+        S.dorp.dievenzoekers.namen.splice(j,1);
+        if(!S.dorp.dievenzoekers.namen.length) S.dorp.dievenzoekers = null;
+      }
+    }
   }
   schrijf(`Liet ${m.naam} gaan uit het leger.`,2);
   S.manschappen.splice(i,1);
@@ -2826,6 +2940,7 @@ function tussendoorDorpVak(){
   const info = DORPGEBOUWEN[cel.type];
   let inhoud = `<p>${info.noot}</p>`;
   let acties = "";
+  let plaatjeId = dorpPlaatjeIdVoorCel(cel);
 
   if(cel.type === "graanschuur"){
     inhoud += `<p class="cijfers">Voorraad: ${cel.vol}%</p>`;
@@ -2873,10 +2988,72 @@ function tussendoorDorpVak(){
       </div>`;
     }
   } else if(cel.type === "rondetafel"){
-    acties = `<div class="keuzes" style="margin-top:.4rem">
-      <button class="keuze" onclick="dorpRondetafelBijeenroepen()">Roep de manschappen bijeen.<small>Bespreek bewapening en stemming — +1 eer.</small></button>
-      <button class="keuze" ${S.dorp.zelfbestuur?"disabled":""} style="${S.dorp.zelfbestuur?"opacity:.5":""}" onclick="dorpRondetafelOudsten()">Spreek met de dorpsoudsten.<small>${S.dorp.zelfbestuur ? "Het dorp bestuurt zichzelf al." : "Laat de graanschuur voortaan vanzelf bijvullen."}</small></button>
-    </div>`;
+    if(dorpSubscherm === "manschappen"){
+      plaatjeId = "dorp_rondetafel_soldaten";
+      inhoud = `<p>De manschappen zitten aan tafel, wachtend op wat er gezegd gaat worden.</p>`;
+      acties = `<div class="keuzes" style="margin-top:.4rem">
+        <button class="keuze" onclick="dorpRondetafelBijeenroepen()">Bespreek bewapening en stemming.<small>+1 eer.</small></button>
+      </div>
+      <p style="margin-top:.6rem"><button class="knop knop--stil" onclick="dorpRondetafelTerug()">Terug naar de tafel.</button></p>`;
+    } else if(dorpSubscherm === "oudsten"){
+      plaatjeId = "dorp_rondetafel_oudsten";
+      const graanschuurCel = S.dorp.grid.find(c=>c && c.type==="graanschuur");
+      const graanschuurIdx = S.dorp.grid.findIndex(c=>c && c.type==="graanschuur");
+      const beschikbaar = S.manschappen.filter(manschapBeschikbaar);
+      const trainbaar = beschikbaar.filter(m=>m.opleiding<2);
+      const wachtActief = S.manschappen.find(m=>m.opdracht && m.opdracht.type==="dorpswacht");
+      const prijzen = {steenkool:2, ijzer:4, goud:10};
+
+      inhoud = `<p>De dorpsoudsten regelen wat er geregeld moet worden — zolang niemand hen tegenspreekt.</p>`;
+      if(S.vlaggen.oudsten_voorraad_tekst) inhoud += `<p class="fluister">${S.vlaggen.oudsten_voorraad_tekst}</p>`;
+      if(S.vlaggen.oudsten_gezant_tekst) inhoud += `<p class="fluister">${S.vlaggen.oudsten_gezant_tekst}</p>`;
+
+      acties = `<div class="keuzes" style="margin-top:.4rem">`;
+      acties += `<button class="keuze" ${graanschuurCel?"":"disabled"} style="${graanschuurCel?"":"opacity:.5"}" onclick="dorpOudstenVoorraadVragen()">Vraag hoe het met de voorraden staat.<small>${graanschuurCel ? "De graanschuur, in cijfers." : "Er is nog geen graanschuur."}</small></button>`;
+      acties += `<button class="keuze" onclick="dorpOudstenGezantVragen()">Vraag de gezant naar nieuws uit Weelland.<small>Kost niets. Levert misschien iets op.</small></button>`;
+
+      if(graanschuurCel && !graanschuurCel.onderweg){
+        acties += beschikbaar.map(m=>
+          `<button class="keuze" onclick="dorpGraanStuur(${graanschuurIdx},'${m.naam}')">Stuur ${m.naam} om de voorraden bij te vullen.<small>Terug over 3 dagen — 10% voorraad.</small></button>`
+        ).join("");
+      }
+
+      ["steenkool","ijzer","goud"].forEach(g=>{
+        const aantal = S.dorp.grondstoffen[g];
+        acties += `<button class="keuze" ${aantal<=0?"disabled":""} style="${aantal<=0?"opacity:.5":""}" onclick="dorpOudstenVerkopen('${g}')">Verkoop ${aantal} ${g} — ${aantal*prijzen[g]}p<small>Tegen de vaste prijs van de kanselier.</small></button>`;
+      });
+
+      acties += trainbaar.map(m=>
+        `<button class="keuze" onclick="dorpOudstenTrainen('${m.naam}')">Stuur ${m.naam} op training.<small>Terug over 4 dagen, dan ${OPLEIDINGEN[m.opleiding+1]}.</small></button>`
+      ).join("");
+
+      if(wachtActief){
+        acties += `<p class="cijfers">${wachtActief.naam} bewaakt het dorp — nog ${wachtActief.opdracht.dagenOver} dag${wachtActief.opdracht.dagenOver===1?"":"en"}.</p>`;
+      } else {
+        acties += beschikbaar.map(m=>
+          `<button class="keuze" onclick="dorpOudstenBewaken('${m.naam}')">Zet ${m.naam} op wacht in het dorp.<small>2 dagen, minder kans op diefstal.</small></button>`
+        ).join("");
+      }
+
+      if(S.dorp.dievenzoekers){
+        acties += `<p class="cijfers">${S.dorp.dievenzoekers.namen.join(", ")} zoeken naar dieven — nog ${S.dorp.dievenzoekers.dagenOver} dag${S.dorp.dievenzoekers.dagenOver===1?"":"en"}.</p>`;
+      } else {
+        const drieBeschikbaar = beschikbaar.length >= 3;
+        acties += `<button class="keuze" ${drieBeschikbaar?"":"disabled"} style="${drieBeschikbaar?"":"opacity:.5"}" onclick="dorpOudstenDievenZoeken()">Stuur drie man op zoek naar dieven.<small>3 dagen. (${beschikbaar.length} beschikbaar)</small></button>`;
+      }
+
+      if(!S.dorp.zelfbestuur){
+        acties += `<button class="keuze" onclick="dorpRondetafelOudsten()">Verklaar zelfbestuur.<small>Laat de graanschuur voortaan vanzelf bijvullen.</small></button>`;
+      }
+
+      acties += `</div><p style="margin-top:.6rem"><button class="knop knop--stil" onclick="dorpRondetafelTerug()">Terug naar de tafel.</button></p>`;
+    } else {
+      plaatjeId = "dorp_rondetafel";
+      acties = `<div class="keuzes" style="margin-top:.4rem">
+        <button class="keuze" onclick="dorpSubschermKiezen('manschappen')">Roep de manschappen bijeen.<small>Bewapening en stemming.</small></button>
+        <button class="keuze" onclick="dorpSubschermKiezen('oudsten')">Spreek met de dorpsoudsten.<small>Voorraden, nieuws en opdrachten.</small></button>
+      </div>`;
+    }
   } else if(cel.type === "voederplaats"){
     acties = `<div class="keuzes" style="margin-top:.4rem">
       <button class="keuze" onclick="dorpVroegVoeren()">Voer Vroeg.<small>Gezond en sterk voor de lange weg.</small></button>
@@ -2885,7 +3062,7 @@ function tussendoorDorpVak(){
 
   return `<div class="overlay-achtergrond"><div class="overlay-blad">
     <p class="kop">De Zandboks</p><h1>${info.naam}</h1>
-    ${plaat(dorpPlaatjeIdVoorCel(cel))}
+    ${plaat(plaatjeId)}
     ${inhoud}
     ${acties}
     <hr class="regel">
