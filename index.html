@@ -304,7 +304,15 @@ const ASSETS = {
   steeg:       "assets/scene/steeg.webp",
   kruispunt:   "assets/scene/kruispunt.webp",
   kerker:      "assets/scene/kerker.webp",
-  zandboksbrug: "assets/scene/zandboksbrug.webp"
+  zandboksbrug: "assets/scene/zandboksbrug.webp",
+  kanselier_spionageopdracht: "assets/scene/kanselier-spionageopdracht.webp",
+  kanselier_uitbetalen:       "assets/scene/kanselier-uitbetalen.webp",
+  bestolen_graankar:          "assets/scene/bestolen-graankar.webp",
+  bestolen_voorbijganger:     "assets/scene/bestolen-voorbijganger.webp",
+  waaggebouw_schout_opdracht:   "assets/scene/waaggebouw-schout-opdracht.webp",
+  waaggebouw_schout_uitbetalen: "assets/scene/waaggebouw-schout-uitbetalen.webp",
+  stal:        "assets/scene/stal.webp",
+  herberg:     "assets/scene/herberg.webp"
 };
 
 /* Inkt-etsen: de terugval, bewust in stijl en niet als foutmelding */
@@ -705,7 +713,7 @@ const SCENES = {
   },
 
   spionage_intro: {
-    plaat:"kanselier", kop:"De kanselierskamer, zonder ramen", titel:"Oren die niemand verdenkt",
+    plaat:"kanselier_spionageopdracht", kop:"De kanselierskamer, zonder ramen", titel:"Oren die niemand verdenkt",
     tekst:[
       "De tellingen van het korenpakhuis kloppen al drie maanden niet, en de kanselier gelooft niet in muizen die zilver eten. Iemand in Beversluis verkoopt koren van de koning over de grens, en hij wil een naam, geen gerucht.",
       "«Ridders vallen op,» zegt hij. «Jij nog niet. Gebruik dat zolang het duurt.»"
@@ -732,7 +740,7 @@ const SCENES = {
   },
 
   dieven_intro: {
-    plaat:"steeg", kop:"Het waaggebouw, vroeg", titel:"Een vaste beloning",
+    plaat:"waaggebouw_schout_opdracht", kop:"Het waaggebouw, vroeg", titel:"Een vaste beloning",
     tekst:[
       "De schout heeft een lijst en een klerk en geen geduld. «Er is een dief gezien bij de graanmarkt, twee keer deze week,» zegt hij. «Breng hem hier. Ik betaal per stuk, niet per verhaal.»"
     ],
@@ -799,7 +807,7 @@ function spionageAfloop(methode){
   }
 
   SCENES.spionage_afloop = {
-    plaat:"kanselier", kop:"Terug bij de kanselier", titel: succes ? "Een naam, geen gerucht" : "Niets om te melden",
+    plaat:"kanselier_uitbetalen", kop:"Terug bij de kanselier", titel: succes ? "Een naam, geen gerucht" : "Niets om te melden",
     tekst,
     keuzes:[{tekst:"Terug naar Beversluis.", naar:"hoofdstuk1"}]
   };
@@ -837,7 +845,7 @@ function berovenPoging(soort){
   schrijf(`Beroofde ${soort==="klein"?"een eenzame reiziger":"de graankar van de tollenaar"} bij het kruispunt. ${buit} penningen.`,2);
 
   SCENES.beroven_afloop = {
-    plaat:"kruispunt", kop:"Het kruispunt", titel:"Buit",
+    plaat: soort === "klein" ? "bestolen_voorbijganger" : "bestolen_graankar", kop:"Het kruispunt", titel:"Buit",
     tekst:[
       `Het gaat snel en het gaat stil. Je telt ${buit} penningen bij het licht van de maan en voelt niets bijzonders, wat je zelf het meest verontrust.`,
       S.gezocht >= 2 ? "Dit is niet de eerste keer. Er wordt naar je gezocht, ook al weet nog niemand welk gezicht daarbij hoort." : "Niemand heeft je gezien. Voor zover je weet."
@@ -2768,7 +2776,7 @@ function tussendoorKanselier(){
   if(!resultaat){
     return `<div class="overlay-achtergrond"><div class="overlay-blad">
       <p class="kop">De kanselierskamer, Beversluis</p><h1>De kanselier</h1>
-      ${plaat("kanselier")}
+      ${plaat("kanselier_spionageopdracht")}
       <p>De kanselier zoekt oren die niemand verdenkt. «Er is altijd wel iemand die zilver telt dat niet van hem is,» zegt hij.</p>
       <div class="keuzes" style="margin-top:.4rem">
         <button class="keuze" onclick="kanselierMethode('dreigen')">Dreig tot iemand praat.<small>Snel. Ook snel bekend bij de verkeerde mensen.</small></button>
@@ -2780,7 +2788,7 @@ function tussendoorKanselier(){
   }
   return `<div class="overlay-achtergrond"><div class="overlay-blad">
     <p class="kop">De kanselierskamer, Beversluis</p><h1>${resultaat==="succes" ? "Een naam, geen gerucht" : "Niets om te melden"}</h1>
-    ${plaat("kanselier")}
+    ${plaat("kanselier_uitbetalen")}
     <p>${S.vlaggen.kanselier_tekst}</p>
     <div class="keuzes" style="margin-top:.4rem">
       <button class="keuze" onclick="kanselierBetalingOphalen()">${resultaat==="succes" ? "Ontvang betaling — 25p" : "Ga weg zonder betaling"}</button>
@@ -2793,7 +2801,7 @@ function tussendoorSchout(){
   if(!resultaat){
     return `<div class="overlay-achtergrond"><div class="overlay-blad">
       <p class="kop">Het waaggebouw, Beversluis</p><h1>De schout</h1>
-      ${plaat("steeg")}
+      ${plaat("waaggebouw_schout_opdracht")}
       <p>De schout heeft een lijst en een klerk en geen geduld. «Er is een dief gezien bij de graanmarkt,» zegt hij. «Breng hem hier. Ik betaal per stuk, niet per verhaal.»</p>
       <div class="keuzes" style="margin-top:.4rem">
         <button class="keuze" onclick="schoutVraagOpdracht()">Zoek hem tussen de kramen.<small>Vlug, en zonder harnas.</small></button>
@@ -2803,7 +2811,7 @@ function tussendoorSchout(){
   }
   return `<div class="overlay-achtergrond"><div class="overlay-blad">
     <p class="kop">Het waaggebouw, Beversluis</p><h1>${resultaat==="gewonnen" ? "De dief is gevangen" : "Met lege handen"}</h1>
-    ${plaat("steeg")}
+    ${plaat("waaggebouw_schout_uitbetalen")}
     <p>${resultaat==="gewonnen" ? "De schout weegt het zilver af zonder je aan te kijken." : "De schout haalt zijn schouders op. «Volgende week weer een dief,» zegt hij. «Er zijn er genoeg.»"}</p>
     <div class="keuzes" style="margin-top:.4rem">
       <button class="keuze" onclick="schoutBetalingOphalen()">${resultaat==="gewonnen" ? "Ontvang betaling — 12p" : "Ga weg"}</button>
