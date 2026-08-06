@@ -2032,6 +2032,16 @@ function dorpRondetafelOudsten(){
 }
 const GRAAN_DOELEN = [20, 50, 70, 100];
 const GRAAN_PRIJS_PER_PROCENT = 2;
+const HOUT_PRIJS_PER_STUK = 3;
+const HOUT_KOOP_HOEVEELHEDEN = [5, 10, 25];
+function dorpOudstenHoutKopen(aantal){
+  const kosten = aantal * HOUT_PRIJS_PER_STUK;
+  if(S.munten < kosten) return;
+  S.munten -= kosten;
+  S.dorp.grondstoffen.hout += aantal;
+  schrijf(`De dorpsraad kocht ${aantal} stapels hout in, voor ${kosten} penningen.`,2);
+  bewaar(); render();
+}
 function dorpOudstenVoorraadOpPeilBrengen(doel){
   const cel = S.dorp.grid.find(c=>c && c.type==="graanschuur");
   if(!cel || cel.vol >= doel) return;
@@ -3240,6 +3250,12 @@ function tussendoorDorpVak(){
         const aantal = S.dorp.grondstoffen[g];
         acties += `<button class="keuze" ${aantal<=0?"disabled":""} style="${aantal<=0?"opacity:.5":""}" onclick="dorpOudstenVerkopen('${g}')">Verkoop ${aantal} ${g} — ${aantal*prijzen[g]}p<small>Tegen de vaste prijs van de kanselier.</small></button>`;
       });
+
+      acties += HOUT_KOOP_HOEVEELHEDEN.map(aantal=>{
+        const kosten = aantal * HOUT_PRIJS_PER_STUK;
+        const kan = S.munten >= kosten;
+        return `<button class="keuze" ${kan?"":"disabled"} style="${kan?"":"opacity:.5"}" onclick="dorpOudstenHoutKopen(${aantal})">Koop ${aantal} stapels hout — ${kosten}p<small>Aangevoerd door de houthandelaar.</small></button>`;
+      }).join("");
 
       if(!S.dorp.zelfbestuur){
         acties += `<button class="keuze" onclick="dorpRondetafelOudsten()">Verklaar zelfbestuur.<small>Laat de graanschuur voortaan vanzelf bijvullen.</small></button>`;
