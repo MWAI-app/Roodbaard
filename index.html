@@ -282,6 +282,7 @@ const ASSETS = {
   dorp_houtzagerij: "assets/dorp/houtzagerij.webp",
   dorp_mijngat: "assets/dorp/mijngat.webp",
   dorp_gevangenenput: "assets/dorp/gevangenenput.webp",
+  dorp_handhoutzagerij: "assets/dorp/handhoutzagerij.webp",
   dorp_groepstent: "assets/dorp/groepstent.webp",
   dorp_rondetafel: "assets/dorp/rondetafel.webp",
   dorp_rondetafel_soldaten: "assets/dorp/rondetafel-soldaten.webp",
@@ -1632,7 +1633,8 @@ const DORPGEBOUWEN = {
   paardenfokkerij: {naam:"Paardenfokkerij", plaatje:"dorp_paardenfokkerij", prijs:30, hout:10, breedte:2, hoogte:2, noot:"Een veulen per 7 dagen, zolang er ruimte is bij de voederbakken."},
   houtzagerij:    {naam:"Houtzagerij", plaatje:"dorp_houtzagerij", prijs:35, breedte:2, hoogte:1, paardSlots:2, noot:"Zaagt stapels planken. Werkt op paardenkracht — zonder werkpaard geen productie, met een tweede paard 50% meer."},
   mijngat:        {naam:"Mijngat", plaatje:"dorp_mijngat", prijs:10, noot:"Snel gegraven, geen hout nodig. Plaats voor 1 mijnwerker."},
-  gevangenenput:  {naam:"Gevangenenput", plaatje:"dorp_gevangenenput", prijs:22, hout:6, noot:"Houdt gevangenen vast. Na verloop van tijd volgen bekentenissen."}
+  gevangenenput:  {naam:"Gevangenenput", plaatje:"dorp_gevangenenput", prijs:22, hout:6, noot:"Houdt gevangenen vast. Na verloop van tijd volgen bekentenissen."},
+  handhoutzagerij: {naam:"Handhoutzagerij", plaatje:"dorp_handhoutzagerij", prijs:20, noot:"Zaagt hout op mankracht — twee man nodig, anders geen productie."}
 };
 const PAARDENNAMEN = ["Bles","Vos","Schimmel","Falco","Storm","Donder","Wolk","Fakkel","Anemoon","Distel","Merel","Haas"];
 const GEVANGENNAMEN = ["Een zwerver","Een struikrover","Een zakkenroller","Een landloper","Een smokkelaar","Een deserteur","Een valsspeler","Een paardendief"];
@@ -1788,6 +1790,7 @@ function dorpBouwen(id){
   if(id === "mijnbouw_put" || id === "mijnbouw_toren" || id === "mijngat"){ cel.grondstof = null; cel.werkers = 0; }
   if(id === "wachttoren"){ cel.stand = "leeg"; cel.bemanning = []; }
   if(id === "gevangenenput"){ cel.gevangenen = []; }
+  if(id === "handhoutzagerij"){ cel.bemanning = []; }
   if(PAARDENGEBOUWEN.includes(id)){ cel.paarden = []; }
   vakjes.forEach(j=>{ S.dorp.grid[j] = (j === dorpSelectie) ? cel : {type:"__bezet", anker:dorpSelectie}; });
   dorpSelectie = null;
@@ -1896,6 +1899,8 @@ function dorpVolgendeDag(){
         schrijf(`${g.naam} bekende in de gevangenenput van de Zandboks — ${buit} penningen en eer voor wat werd prijsgegeven.`,2);
       });
       cel.gevangenen = cel.gevangenen.filter(g=>g.dagenTot>0);
+    } else if(cel.type === "handhoutzagerij" && cel.bemanning && cel.bemanning.length >= 2){
+      S.dorp.grondstoffen.hout += 4;
     }
   });
 
@@ -2034,6 +2039,27 @@ function dorpGevangeneVangen(i, naam){
   if(!cel || cel.type!=="gevangenenput" || !m || m.opdracht || cel.gevangenen.length >= GEVANGENENPUT_MAX) return;
   m.opdracht = {type:"gevangenjacht", dagenOver:4, put:i};
   schrijf(`Stuurde ${naam} op jacht naar een gevangene voor de gevangenenput.`,2);
+  bewaar(); render();
+}
+function dorpHandzagerijBemannen(i){
+  const cel = S.dorp.grid[i];
+  if(!cel || cel.type!=="handhoutzagerij" || cel.bemanning.length) return;
+  const kandidaten = S.manschappen.filter(manschapBeschikbaar);
+  if(kandidaten.length < 2) return;
+  const gekozen = kandidaten.slice(0,2);
+  gekozen.forEach(m=>{ m.opdracht = {type:"handzagerij"}; });
+  cel.bemanning = gekozen.map(m=>m.naam);
+  schrijf(`Zette ${cel.bemanning.join(" en ")} aan het werk bij de handhoutzagerij.`,2);
+  bewaar(); render();
+}
+function dorpHandzagerijTerughalen(i){
+  const cel = S.dorp.grid[i];
+  if(!cel || cel.type!=="handhoutzagerij" || !cel.bemanning.length) return;
+  cel.bemanning.forEach(naam=>{
+    const m = S.manschappen.find(m=>m.naam===naam);
+    if(m) m.opdracht = null;
+  });
+  cel.bemanning = [];
   bewaar(); render();
 }
 function dorpWachtZetten(i, stand){
@@ -3227,6 +3253,17 @@ function tussendoorDorpVak(){
           : `<div class="keuzes" style="margin-top:.4rem">` + beschikbaarG.map(m=>
               `<button class="keuze" onclick="dorpGevangeneVangen(${i},'${m.naam}')">Stuur ${m.naam} op jacht naar een gevangene.<small>Terug over 4 dagen, met een gevangene voor de put.</small></button>`
             ).join("") + `</div>`);
+  } else if(cel.type === "handhoutzagerij"){
+    inhoud += `<p class="cijfers">Bemanning: ${cel.bemanning.length}/2 · Productie: ${cel.bemanning.length>=2?"4 hout per dag":"geen"}</p>`;
+    if(cel.bemanning.length) inhoud += `<p>${cel.bemanning.join(" en ")}</p>`;
+    const kandidatenH = S.manschappen.filter(manschapBeschikbaar);
+    acties = cel.bemanning.length
+      ? `<div class="keuzes" style="margin-top:.4rem">
+          <button class="keuze" onclick="dorpHandzagerijTerughalen(${i})">Haal ze terug.</button>
+        </div>`
+      : `<div class="keuzes" style="margin-top:.4rem">
+          <button class="keuze" ${kandidatenH.length<2?"disabled":""} style="${kandidatenH.length<2?"opacity:.5":""}" onclick="dorpHandzagerijBemannen(${i})">Zet twee man aan het werk.<small>(${kandidatenH.length} beschikbaar)</small></button>
+        </div>`;
   } else if(cel.type === "wachttoren"){
     const statusTekst = cel.stand === "leeg" ? "onbewaakt" : cel.stand === "wacht" ? "bewaakt" : "bemand met schutters";
     inhoud += `<p class="cijfers">Status: ${statusTekst}</p>`;
